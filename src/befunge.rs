@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::fs::read_to_string;
 use std::io::Stdout;
 use ratatui::layout::Constraint;
@@ -26,12 +27,23 @@ enum FungeState {
     Ended
 }
 
+#[derive(PartialEq, Debug, Default)]
+enum DataMode { #[default] Stack, Queue }
+impl DataMode {
+    fn name(&self) -> String {
+        match self {
+            DataMode::Stack => "Stack".to_string(),
+            DataMode::Queue => "Queue".to_string()
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct Befunge {
     /// the grid that is being traversed
     grid: FungeGrid,
-    /// the main data stack used by the sim
-    stack: Vec<u32>,
+    /// simultaneously a stack and a queue
+    data: VecDeque<u32>,
     /// output text produced by , and .
     out: String,
 
@@ -43,6 +55,8 @@ pub struct Befunge {
     paused: bool,
     /// skip the next instruction
     skip_next: bool,
+    /// hs reference???
+    data_mode: DataMode,
 
     /// stored command line arguments
     args: Arguments,
@@ -80,7 +94,7 @@ impl Befunge {
     /// reset everything
     pub fn restart(&mut self) {
         self.grid.reset();
-        self.stack.clear();
+        self.data.clear();
         self.out.clear();
         self.state = Started;
         self.paused = self.args.paused;
@@ -108,15 +122,15 @@ impl Befunge {
     /// whether the sim is taking input from a ~
     pub fn inputting_char(&self) -> bool {self.state == InputtingChar}
 
-    /// render the grid, stack, output, and message
+    /// render the grid, data, output, and message
     pub fn render(&mut self, f: &mut Frame<CrosstermBackend<Stdout>>) {
         let main_width = (self.grid.width() as u16 + 2).max(32);
         let output_height = self.out.len() as u16 / (main_width-2) + 3;
         let grid_height = self.grid.height() as u16 + 2;
-        let stack_height = (output_height + grid_height).max(self.stack.len() as u16 + 2);
+        let data_height = (output_height + grid_height).max(self.data.len() as u16 + 2);
 
         let main_layout = Layout::new()
-            // main area / stack
+            // main area / data
             .constraints(vec![Constraint::Length(main_width), Constraint::Length(8), Constraint::Min(1)])
             .direction(Horizontal)
             .split(f.size());
@@ -124,16 +138,16 @@ impl Befunge {
             // grid / output / message
             .constraints(vec![Constraint::Length(grid_height), Constraint::Length(output_height), Constraint::Min(1)])
             .split(main_layout[0]);
-        let stack_layout = Layout::new()
-            .constraints(vec![Constraint::Length(stack_height), Constraint::Min(1)])
+        let data_layout = Layout::new()
+            .constraints(vec![Constraint::Length(data_height), Constraint::Min(1)])
             .split(main_layout[1]);
 
-        let stack = Paragraph::new(self.stack.iter().rev().map(|n| Line::from(n.to_string())).collect::<Vec<Line>>())
-            .block(Block::default().borders(Borders::ALL).title("Stack"));
+        let data = Paragraph::new(self.data.iter().rev().map(|n| Line::from(n.to_string())).collect::<Vec<Line>>())
+            .block(Block::default().borders(Borders::ALL).title(self.data_mode.name()));
         let output = Paragraph::new(self.out.clone()).wrap(Wrap { trim: false })
             .block(Block::default().borders(Borders::ALL).title("Output"));
 
-        f.render_widget(stack, stack_layout[0]);
+        f.render_widget(data, data_layout[0]);
         f.render_widget(self.grid.render(), vertical_split[0]);
         f.render_widget(output, vertical_split[1]);
         f.render_widget(self.render_message(), vertical_split[2]);
@@ -193,13 +207,16 @@ impl Befunge {
         self.events.slow_down();
     }
 
-    /// get the top number from the stack or zero
+    /// get the top number from the stack or first number in the queue
     pub fn pop(&mut self) -> u32 {
-        self.stack.pop().unwrap_or(0)
+        match self.data_mode {
+            DataMode::Stack => self.data.pop_back().unwrap_or(0),
+            DataMode::Queue => self.data.pop_front().unwrap_or(0)
+        }
     }
-    /// push a number onto the top of the stack
+    /// push a number onto the top of the stack or end of the queue
     pub fn push(&mut self, n: u32) {
-        self.stack.push(n)
+        self.data.push_back(n)
     }
     /// run the instruction from a given character
     pub fn command(&mut self, c: char) {
@@ -248,6 +265,8 @@ impl Befunge {
                 self.push(y);
             }
             '$' => {self.pop();}
+            'q' => self.data_mode = DataMode::Queue,
+            's' => self.data_mode = DataMode::Stack,
             // input/output
             '.' => {
                 let n = self.pop();
