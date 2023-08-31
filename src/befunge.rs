@@ -14,6 +14,7 @@ use crate::direction::Direction::*;
 use crate::event::{Event, EventHandler};
 use crate::befunge::FungeState::*;
 use anyhow::Result;
+use crate::input::take_input_parse;
 
 #[derive(PartialEq, Debug, Default)]
 enum FungeState {
@@ -53,7 +54,7 @@ pub struct Befunge {
 impl Befunge {
     /// create a new befunge simulation
     pub fn new(args: Arguments) -> Befunge {
-        let paused = args.start_paused;
+        let paused = args.paused;
         let grid = FungeGrid::new(read_to_string(&args.file).expect("failed to read file"));
         Befunge { grid, paused, args, ..Default::default() }
     }
@@ -82,7 +83,7 @@ impl Befunge {
         self.stack.clear();
         self.out.clear();
         self.state = Started;
-        self.paused = self.args.start_paused;
+        self.paused = self.args.paused;
         self.str_mode = false;
         self.skip_next = false;
         self.input.clear();
@@ -91,6 +92,8 @@ impl Befunge {
     pub fn pause(&mut self) {
         self.paused = !self.paused;
     }
+    /// readonly output because exposing fields is gross
+    pub fn output(&self) -> String {self.out.clone()}
 
     /// are we on the first tick of the sim
     pub fn first_tick(&self) -> bool {self.state == Started}
@@ -149,11 +152,17 @@ impl Befunge {
         Paragraph::new(text)
     }
 
+    // TODO CLEAN UP INPUT SYSTEM
+
     /// input a character and go back to normal running state
     pub fn input_char(&mut self, c: char) {
         self.push(c as u32);
         self.state = Running;
         self.input.clear();
+    }
+    /// input char from quiet mode
+    pub fn input_char_quiet(&mut self) {
+        self.input_char(take_input_parse::<char>("input char:").unwrap());
     }
     /// add a single digit to number input
     pub fn add_digit(&mut self, c: char) {
@@ -164,6 +173,11 @@ impl Befunge {
         self.push(self.input.parse().unwrap_or(0));
         self.state = Running;
         self.input.clear();
+    }
+    /// input num from quiet mode
+    pub fn input_num_quiet(&mut self) {
+        self.input = take_input_parse::<u32>("input num:").unwrap().to_string();
+        self.input_num();
     }
 
     /// next key press or tick from event handler

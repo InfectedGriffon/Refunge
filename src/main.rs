@@ -3,6 +3,7 @@ mod direction;
 mod grid;
 mod event;
 mod arguments;
+mod input;
 
 use clap::Parser;
 use std::io::stdout;
@@ -16,10 +17,29 @@ use crate::befunge::Befunge;
 use crate::event::Event;
 
 fn main() -> Result<()> {
+    let args = Arguments::parse();
+
+    // quiet mode (no display)
+    if args.quiet {
+        let mut befunge = Befunge::new(args);
+        while !befunge.ended() {
+            if befunge.inputting_char() {
+                befunge.input_char_quiet();
+            } else if befunge.inputting_num() {
+                befunge.input_num_quiet();
+            } else {
+                befunge.tick();
+            }
+        }
+        println!("{}", befunge.output());
+        return Ok(());
+    }
+
+    // normal tui display
     enable_raw_mode()?;
     execute!(stdout(), EnterAlternateScreen)?;
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
-    let mut befunge = Befunge::new(Arguments::parse());
+    let mut befunge = Befunge::new(args);
 
     loop {
         terminal.draw(|f| befunge.render(f))?;
