@@ -1,0 +1,5 @@
+123++.@
+
+befunge uses a stack to store data.
+we can do math on the topmost values,
+or use a period to print a number.

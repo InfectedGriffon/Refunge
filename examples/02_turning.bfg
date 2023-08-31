@@ -1,0 +1,8 @@
+       v
+    >     @
+
+    ^  <
+
+"v", "^", "<" and ">" turn.
+going past the edge loops and
+paths can freely intersect.

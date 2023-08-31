@@ -1,0 +1,3 @@
+q -> queue mode
+s -> stack mode
+l -> lehmer codes

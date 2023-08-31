@@ -1,0 +1,5 @@
+"!dlroW ,olleH" >:#,_@
+
+quotes can be used to push letters onto the stack.
+the "_" lets us loop until the stack is empty.
+it goes to the right only when the stack pops zero.
