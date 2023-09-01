@@ -1,11 +1,9 @@
-use std::collections::VecDeque;
 use std::fs::read_to_string;
 use std::io::Stdout;
 use ratatui::layout::Constraint;
 use ratatui::layout::Layout;
 use ratatui::Frame;
 use ratatui::backend::CrosstermBackend;
-use ratatui::prelude::Line;
 use ratatui::widgets::{Block, Borders, Paragraph};
 use ratatui::widgets::Wrap;
 use ratatui::layout::Direction::Horizontal;
@@ -15,6 +13,7 @@ use crate::direction::Direction::*;
 use crate::event::{Event, EventHandler};
 use crate::befunge::FungeState::*;
 use anyhow::Result;
+use crate::data::FungeData;
 use crate::input::take_input_parse;
 
 #[derive(PartialEq, Debug, Default)]
@@ -27,23 +26,12 @@ enum FungeState {
     Ended
 }
 
-#[derive(PartialEq, Debug, Default)]
-enum DataMode { #[default] Stack, Queue }
-impl DataMode {
-    fn name(&self) -> String {
-        match self {
-            DataMode::Stack => "Stack".to_string(),
-            DataMode::Queue => "Queue".to_string()
-        }
-    }
-}
-
 #[derive(Default)]
 pub struct Befunge {
     /// the grid that is being traversed
     grid: FungeGrid,
     /// simultaneously a stack and a queue
-    data: VecDeque<u32>,
+    data: FungeData,
     /// output text produced by , and .
     out: String,
 
@@ -55,8 +43,6 @@ pub struct Befunge {
     paused: bool,
     /// skip the next instruction
     skip_next: bool,
-    /// hs reference???
-    data_mode: DataMode,
 
     /// stored command line arguments
     args: Arguments,
@@ -142,12 +128,10 @@ impl Befunge {
             .constraints(vec![Constraint::Length(data_height), Constraint::Min(1)])
             .split(main_layout[1]);
 
-        let data = Paragraph::new(self.data.iter().rev().map(|n| Line::from(n.to_string())).collect::<Vec<Line>>())
-            .block(Block::default().borders(Borders::ALL).title(self.data_mode.name()));
         let output = Paragraph::new(self.out.clone()).wrap(Wrap { trim: false })
             .block(Block::default().borders(Borders::ALL).title("Output"));
 
-        f.render_widget(data, data_layout[0]);
+        f.render_widget(self.data.render(), data_layout[0]);
         f.render_widget(self.grid.render(), vertical_split[0]);
         f.render_widget(output, vertical_split[1]);
         f.render_widget(self.render_message(), vertical_split[2]);
@@ -209,14 +193,11 @@ impl Befunge {
 
     /// get the top number from the stack or first number in the queue
     pub fn pop(&mut self) -> u32 {
-        match self.data_mode {
-            DataMode::Stack => self.data.pop_back().unwrap_or(0),
-            DataMode::Queue => self.data.pop_front().unwrap_or(0)
-        }
+        self.data.pop()
     }
     /// push a number onto the top of the stack or end of the queue
     pub fn push(&mut self, n: u32) {
-        self.data.push_back(n)
+        self.data.push(n)
     }
     /// run the instruction from a given character
     pub fn command(&mut self, c: char) {
@@ -265,8 +246,8 @@ impl Befunge {
                 self.push(y);
             }
             '$' => {self.pop();}
-            'q' => self.data_mode = DataMode::Queue,
-            's' => self.data_mode = DataMode::Stack,
+            'q' => self.data.queue_mode(),
+            's' => self.data.stack_mode(),
             // input/output
             '.' => {
                 let n = self.pop();

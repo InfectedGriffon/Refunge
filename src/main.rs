@@ -4,6 +4,7 @@ mod grid;
 mod event;
 mod arguments;
 mod input;
+mod data;
 
 use clap::Parser;
 use std::io::stdout;
