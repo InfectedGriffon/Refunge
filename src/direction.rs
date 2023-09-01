@@ -21,3 +21,14 @@ impl Distribution<Direction> for Standard {
         }
     }
 }
+impl Direction {
+    /// the next direction clockwise
+    pub fn next(&self) -> Direction {
+        match self {
+            Up => Right,
+            Right => Down,
+            Down => Left,
+            Left => Up
+        }
+    }
+}

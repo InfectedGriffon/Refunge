@@ -76,6 +76,19 @@ impl FungeGrid {
     pub fn face(&mut self, dir: Direction) {
         self.dir = dir
     }
+    /// rotate the pc by 180 degrees
+    pub fn turn_reverse(&mut self) {
+        self.dir = self.dir.next().next();
+    }
+    /// rotate the pc by 90 degrees anticlockwise
+    pub fn turn_left(&mut self) {
+        self.dir = self.dir.next().next().next();
+    }
+    /// rotate the pc by 90 degrees clockwise
+    pub fn turn_right(&mut self) {
+        self.dir = self.dir.next();
+    }
+
     /// move one space forwards, wrapping around if needed
     pub fn walk(&mut self) {
         match &self.dir {

@@ -10,3 +10,4 @@ If the -e flag is not enabled, using `p` on areas outside the playfield will hal
 Multiple new instructions have been added:
 - `q`: swaps the data tower into Queue (FIFO) mode.
 - `s`: swaps the data tower into Stack (FILO) mode (default).
+- `[]rw`: loaned from [Funge-98](https://github.com/catseye/Funge-98/blob/master/doc/funge98.markdown); rotate the Program Counter

@@ -267,6 +267,17 @@ impl Befunge {
             '?' => self.grid.face(rand::random()),
             '_' => if self.pop() == 0 {self.grid.face(Right)} else {self.grid.face(Left)},
             '|' => if self.pop() == 0 {self.grid.face(Down)} else {self.grid.face(Up)},
+            'r' => self.grid.turn_reverse(),
+            '[' => self.grid.turn_left(),
+            ']' => self.grid.turn_right(),
+            'w' => {
+                let (b, a) = (self.pop(), self.pop());
+                if a < b {
+                    self.grid.turn_right()
+                } else if a > b {
+                    self.grid.turn_left()
+                };
+            }
             // misc
             '"' => self.str_mode = !self.str_mode,
             '#' => self.skip_next = true,
