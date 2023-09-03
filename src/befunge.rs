@@ -4,7 +4,7 @@ use crate::direction::Direction::*;
 use crate::event::{Event, EventHandler};
 use crate::grid::FungeGrid;
 use crate::input::take_input_parse;
-use crate::state::{self, FungeState, OnTick};
+use crate::state::{self, FungeState, MoveType, OnTick};
 use anyhow::Result;
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction::Horizontal, Layout};
@@ -43,7 +43,11 @@ impl Befunge {
     }
     /// step forward once and run whatever char we're standing on
     pub fn tick(&mut self) {
-        if self.state.moving() { self.grid.walk() }
+        match self.state.movement() {
+            MoveType::Halted => { /* do not walk */}
+            MoveType::Forward => self.grid.walk(),
+            MoveType::Reverse => self.grid.walk_reverse(),
+        }
 
         let c = self.grid.current_char();
         match self.state.action() {
@@ -78,7 +82,7 @@ impl Befunge {
 
     /// is the sim not paused or at the end
     pub fn running(&self) -> bool {
-        !self.paused && self.state != state::ENDED
+        !self.paused && !self.state.is_end()
     }
     /// is the sim paused
     pub fn paused(&self) -> bool {
@@ -269,6 +273,14 @@ impl Befunge {
                 } else if a > b {
                     self.grid.turn_left()
                 };
+            }
+            'j' => {
+                let n = self.pop();
+                if n < 0 {
+                    self.state = state::SKIP_N_REV(n.abs() as u8);
+                } else if n > 0 {
+                    self.state = state::SKIP_N(n.abs() as u8);
+                }
             }
             // misc
             '"' => self.state = state::STRING_MODE,

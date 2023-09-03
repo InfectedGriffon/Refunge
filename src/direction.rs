@@ -3,7 +3,7 @@ use rand::Rng;
 use crate::direction::Direction::*;
 
 /// one of the four cardinal directions
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Copy)]
 pub enum Direction {
     Up,
     Down,

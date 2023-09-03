@@ -91,7 +91,14 @@ impl FungeGrid {
 
     /// move one space forwards, wrapping around if needed
     pub fn walk(&mut self) {
-        match &self.dir {
+        self.step(self.dir)
+    }
+    /// move one space backwards, wrapping around if needed
+    pub fn walk_reverse(&mut self) {
+        self.step(self.dir.next().next())
+    }
+    fn step(&mut self, dir: Direction) {
+        match dir {
             Up    => self.y = if self.y == 0 {self.height-1} else {self.y-1},
             Down  => self.y = if self.y == self.height-1 {0} else {self.y+1},
             Right => self.x = if self.x == self.width-1 {0} else {self.x+1},
