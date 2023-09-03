@@ -39,6 +39,12 @@ impl FungeData {
     pub fn queue_mode(&mut self) {
         self.mode = DataMode::Queue;
     }
+    /// rearrange data via lehmer codes
+    pub fn permute(&mut self, p: usize) {
+        let perm = lehmer::Lehmer::from_decimal(p, self.len()).to_permutation();
+        let og = self.inner.clone();
+        self.inner = perm.iter().map(|idx| og[*idx as usize]).collect();
+    }
     /// render to a vertical list, bottom to top
     pub fn render(&self) -> Paragraph {
         let name = match self.mode {

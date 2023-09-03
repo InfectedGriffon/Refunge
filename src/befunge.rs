@@ -199,7 +199,7 @@ impl Befunge {
     pub fn command(&mut self, c: char) {
         match c {
             // integers
-            '0'..='9' => self.push(c.to_digit(10).unwrap() as i32),
+            '0'..='9'|'a'..='f' => self.push(c.to_digit(16).unwrap() as i32),
             // math
             '+' => {
                 let (x, y) = (self.pop(), self.pop());
@@ -244,6 +244,10 @@ impl Befunge {
             '$' => {self.pop();}
             'q' => self.data.queue_mode(),
             's' => self.data.stack_mode(),
+            'l' => {
+                let n = self.pop();
+                self.data.permute(n as usize);
+            }
             // input/output
             '.' => {
                 let n = self.pop();
