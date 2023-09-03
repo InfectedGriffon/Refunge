@@ -19,3 +19,4 @@ Borrowed from [Funge-98](https://github.com/catseye/Funge-98/blob/master/doc/fun
 - `w`: pop m, n. if m > n turn left; if m < n turn right; otherwise continues straight
 - `;`: pass over all instructions and do not execute until reaching another ";"
 - `j`: pop n and jump over that many spaces (can be negative to move backwards)
+- `a`-`f`: hex integer literals, push 10-15
