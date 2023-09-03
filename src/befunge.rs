@@ -269,6 +269,7 @@ impl Befunge {
             // misc
             '"' => self.state = state::STRING_MODE,
             '#' => self.state = state::SKIP_NEXT,
+            ';' => self.state = state::SKIP_UNTIL,
             'g' => {
                 let (x, y) = (self.pop(), self.pop());
                 let c = self.grid.char_at(x as usize, y as usize);

@@ -15,9 +15,13 @@ pub struct FungeState {
     message: &'static str,
 }
 impl FungeState {
-    /// generates a new state
-    const fn of(ends_at: EndAt, moving: bool, action: OnTick, message: &'static str) -> FungeState {
+    /// generates a new state with message
+    const fn of_message(ends_at: EndAt, moving: bool, action: OnTick, message: &'static str) -> FungeState {
         FungeState { ends_at, moving, action, ticks: 0, message }
+    }
+    /// generates a new state without a message
+    const fn of(ends_at: EndAt, moving: bool, action: OnTick) -> FungeState {
+        FungeState { ends_at, moving, action, ticks: 0, message: "" }
     }
     /// whether the Program Counter moves during this state
     pub fn moving(&self) -> bool {self.moving}
@@ -76,10 +80,11 @@ pub enum OnTick {
     StringPush
 }
 
-pub const STARTED: FungeState        = FungeState::of(Instant, false, Instruction, "");
-pub const RUNNING: FungeState        = FungeState::of(Never, true, Instruction, "");
-pub const ENDED: FungeState          = FungeState::of(Never, false, Nothing, "sim ended.\npress r to restart or q to exit.");
-pub const SKIP_NEXT: FungeState      = FungeState::of(Ticks(1), true, Nothing, "");
-pub const STRING_MODE: FungeState    = FungeState::of(Char('"'), true, StringPush, "(string mode)");
-pub const INPUTTING_CHAR: FungeState = FungeState::of(Manual, false, Nothing, "input char:");
-pub const INPUTTING_NUM: FungeState  = FungeState::of(Manual, false, Nothing, "input num:");
+pub const STARTED: FungeState        = FungeState::of(Instant, false, Instruction);
+pub const RUNNING: FungeState        = FungeState::of(Never, true, Instruction);
+pub const ENDED: FungeState          = FungeState::of_message(Never, false, Nothing, "sim ended.\npress r to restart or q to exit.");
+pub const SKIP_NEXT: FungeState      = FungeState::of(Ticks(1), true, Nothing);
+pub const SKIP_UNTIL: FungeState     = FungeState::of(Char(';'), true, Nothing);
+pub const STRING_MODE: FungeState    = FungeState::of_message(Char('"'), true, StringPush, "(string mode)");
+pub const INPUTTING_CHAR: FungeState = FungeState::of_message(Manual, false, Nothing, "input char:");
+pub const INPUTTING_NUM: FungeState  = FungeState::of_message(Manual, false, Nothing, "input num:");
