@@ -48,7 +48,7 @@ impl Befunge {
         let c = self.grid.current_char();
         match self.state.action() {
             OnTick::Instruction => self.command(c),
-            OnTick::StringPush if c != '"' => self.push(c as u32),
+            OnTick::StringPush if c != '"' => self.push(c as i32),
             _ => {}
         }
 
@@ -142,7 +142,7 @@ impl Befunge {
 
     /// input a character and go back to normal running state
     pub fn input_char(&mut self, c: char) {
-        self.push(c as u32);
+        self.push(c as i32);
         self.state = state::RUNNING;
         self.input.clear();
     }
@@ -180,18 +180,22 @@ impl Befunge {
     }
 
     /// get the top number from the stack or first number in the queue
-    pub fn pop(&mut self) -> u32 {
+    pub fn pop(&mut self) -> i32 {
         self.data.pop()
     }
+    /// get the top value from the stack as a character
+    pub fn pop_char(&mut self) -> char {
+        char::from_u32(self.data.pop() as u32).unwrap_or(' ')
+    }
     /// push a number onto the top of the stack or end of the queue
-    pub fn push(&mut self, n: u32) {
+    pub fn push(&mut self, n: i32) {
         self.data.push(n)
     }
     /// run the instruction from a given character
     pub fn command(&mut self, c: char) {
         match c {
             // integers
-            '0'..='9' => self.push(c.to_digit(10).unwrap()),
+            '0'..='9' => self.push(c.to_digit(10).unwrap() as i32),
             // math
             '+' => {
                 let (x, y) = (self.pop(), self.pop());
@@ -242,7 +246,7 @@ impl Befunge {
                 self.out.push_str(&n.to_string());
             }
             ',' => {
-                let n = char::from_u32(self.pop()).unwrap_or(' ');
+                let n = self.pop_char();
                 self.out.push(n);
             }
             '&' => self.state = state::INPUTTING_NUM,
@@ -273,11 +277,10 @@ impl Befunge {
             'g' => {
                 let (x, y) = (self.pop(), self.pop());
                 let c = self.grid.char_at(x as usize, y as usize);
-                self.push(c as u32)
+                self.push(c as i32)
             },
             'p' => {
-                let (x, y) = (self.pop() as usize, self.pop() as usize);
-                let c = char::from_u32(self.pop()).unwrap_or('\x00');
+                let (x, y, c) = (self.pop() as usize, self.pop() as usize, self.pop_char());
                 if self.args.expand {
                     self.grid.set_char_or_expand(x, y, c);
                 } else {

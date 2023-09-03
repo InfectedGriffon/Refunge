@@ -7,7 +7,7 @@ enum DataMode { #[default] Stack, Queue }
 
 #[derive(Debug, Default)]
 pub struct FungeData {
-    inner: VecDeque<u32>,
+    inner: VecDeque<i32>,
     mode: DataMode
 }
 impl FungeData {
@@ -17,14 +17,14 @@ impl FungeData {
         self.mode = Default::default();
     }
     /// pop a value from the top of the stack / start of the queue
-    pub fn pop(&mut self) -> u32 {
+    pub fn pop(&mut self) -> i32 {
         match self.mode {
             DataMode::Stack => self.inner.pop_back().unwrap_or(0),
             DataMode::Queue => self.inner.pop_front().unwrap_or(0)
         }
     }
     /// push a value onto top of stack / end of queue
-    pub fn push(&mut self, n: u32) {
+    pub fn push(&mut self, n: i32) {
         self.inner.push_back(n)
     }
     /// the number of elements stored
