@@ -92,10 +92,11 @@ pub const RUNNING: FungeState = FungeState::of(Never, Forward, Instruction);
 pub const ENDED: FungeState = FungeState::of_message(Never, Halted, Nothing, "sim ended.\npress r to restart or q to exit.");
 
 pub const SKIP_NEXT: FungeState = FungeState::of(Ticks(1), Forward, Nothing);
-pub const SKIP_UNTIL: FungeState = FungeState::of_message(Char(';'), Forward, Nothing, "jumping");
+pub const SKIP_UNTIL: FungeState = FungeState::of_message(Char(';'), Forward, Nothing, "(jumping)");
 pub const SKIP_N: fn(u8) -> FungeState = |n| FungeState::of_message(Ticks(n), Forward, Nothing, "(jumping)");
 pub const SKIP_N_REV: fn(u8) -> FungeState = |n| FungeState::of_message(Ticks(n), Reverse, Nothing, "(jumping)");
 
 pub const STRING_MODE: FungeState = FungeState::of_message(Char('"'), Forward, StringPush, "(string mode)");
+pub const CHAR_FETCH: FungeState = FungeState::of_message(Ticks(1), Forward, StringPush, "(string mode)");
 pub const INPUTTING_CHAR: FungeState = FungeState::of_message(Manual, Halted, Nothing, "input char:");
 pub const INPUTTING_NUM: FungeState = FungeState::of_message(Manual, Halted, Nothing, "input num:");

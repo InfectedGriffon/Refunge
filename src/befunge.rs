@@ -288,6 +288,7 @@ impl Befunge {
             }
             // misc
             '"' => self.state = state::STRING_MODE,
+            '\'' => self.state = state::CHAR_FETCH,
             '#' => self.state = state::SKIP_NEXT,
             ';' => self.state = state::SKIP_UNTIL,
             'g' => {
