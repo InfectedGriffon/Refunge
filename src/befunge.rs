@@ -1,30 +1,17 @@
-use std::fs::read_to_string;
-use std::io::Stdout;
-use ratatui::layout::Constraint;
-use ratatui::layout::Layout;
-use ratatui::Frame;
-use ratatui::backend::CrosstermBackend;
-use ratatui::widgets::{Block, Borders, Paragraph};
-use ratatui::widgets::Wrap;
-use ratatui::layout::Direction::Horizontal;
 use crate::arguments::Arguments;
-use crate::grid::FungeGrid;
+use crate::data::FungeData;
 use crate::direction::Direction::*;
 use crate::event::{Event, EventHandler};
-use crate::befunge::FungeState::*;
-use anyhow::Result;
-use crate::data::FungeData;
+use crate::grid::FungeGrid;
 use crate::input::take_input_parse;
-
-#[derive(PartialEq, Debug, Default)]
-enum FungeState {
-    #[default]
-    Started,
-    Running,
-    InputtingNum,
-    InputtingChar,
-    Ended
-}
+use crate::state::{self, FungeState, OnTick};
+use anyhow::Result;
+use ratatui::backend::CrosstermBackend;
+use ratatui::layout::{Constraint, Direction::Horizontal, Layout};
+use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
+use ratatui::Frame;
+use std::fs::read_to_string;
+use std::io::Stdout;
 
 #[derive(Default)]
 pub struct Befunge {
@@ -37,12 +24,8 @@ pub struct Befunge {
 
     /// what's going on in there
     state: FungeState,
-    /// this is separate from the state for reasons™
-    str_mode: bool,
     /// toggled by pressing p
     paused: bool,
-    /// skip the next instruction
-    skip_next: bool,
 
     /// stored command line arguments
     args: Arguments,
@@ -60,32 +43,28 @@ impl Befunge {
     }
     /// step forward once and run whatever char we're standing on
     pub fn tick(&mut self) {
-        // when at the very beginning, do stuff THEN move
-        if !self.ended() && !self.first_tick() {
-            self.grid.walk();
-        }
+        if self.state.moving() { self.grid.walk() }
 
         let c = self.grid.current_char();
-        if self.str_mode && c != '"' {
-            self.push(c as u32);
-        } else if !self.skip_next {
-            self.command(c);
-        } else {
-            self.skip_next = false;
+        match self.state.action() {
+            OnTick::Instruction => self.command(c),
+            OnTick::StringPush if c != '"' => self.push(c as u32),
+            _ => {}
         }
 
-        // once ticked a single time, go into normal running
-        if self.first_tick() {self.state = Running}
+        if self.state.is_over(c) {
+            self.state = state::RUNNING;
+        } else {
+            self.state.tick();
+        }
     }
     /// reset everything
     pub fn restart(&mut self) {
         self.grid.reset();
         self.data.clear();
         self.out.clear();
-        self.state = Started;
+        self.state = state::STARTED;
         self.paused = self.args.paused;
-        self.str_mode = false;
-        self.skip_next = false;
         self.input.clear();
     }
     /// pause/unpause the sim
@@ -93,61 +72,70 @@ impl Befunge {
         self.paused = !self.paused;
     }
     /// readonly output because exposing fields is gross
-    pub fn output(&self) -> String {self.out.clone()}
+    pub fn output(&self) -> String {
+        self.out.clone()
+    }
 
-    /// are we on the first tick of the sim
-    pub fn first_tick(&self) -> bool {self.state == Started}
     /// is the sim not paused or at the end
-    pub fn running(&self) -> bool {!self.paused && (self.state == Running || self.state == Started)}
+    pub fn running(&self) -> bool {
+        !self.paused && self.state != state::ENDED
+    }
     /// is the sim paused
-    pub fn paused(&self) -> bool {self.paused && self.state != InputtingNum && self.state != InputtingChar}
+    pub fn paused(&self) -> bool {
+        self.paused
+    }
     /// is the sim at the end
-    pub fn ended(&self) -> bool {self.state == Ended}
+    pub fn ended(&self) -> bool {
+        self.state.is_end()
+    }
     /// whether the sim is taking input from an &
-    pub fn inputting_num(&self) -> bool {self.state == InputtingNum}
+    pub fn inputting_num(&self) -> bool {
+        self.state.inputting_num()
+    }
     /// whether the sim is taking input from a ~
-    pub fn inputting_char(&self) -> bool {self.state == InputtingChar}
+    pub fn inputting_char(&self) -> bool {
+        self.state.inputting_char()
+    }
 
     /// render the grid, data, output, and message
     pub fn render(&mut self, f: &mut Frame<CrosstermBackend<Stdout>>) {
         let main_width = (self.grid.width() as u16 + 2).max(32);
-        let output_height = self.out.len() as u16 / (main_width-2) + 3;
+        let output_height = self.out.len() as u16 / (main_width - 2) + 3;
         let grid_height = self.grid.height() as u16 + 2;
         let data_height = (output_height + grid_height).max(self.data.len() as u16 + 2);
 
         let main_layout = Layout::new()
             // main area / data
-            .constraints(vec![Constraint::Length(main_width), Constraint::Length(8), Constraint::Min(1)])
+            .constraints(vec![
+                Constraint::Length(main_width), // vertical_split
+                Constraint::Length(8),          // data_layout
+                Constraint::Min(1),             // padding
+            ])
             .direction(Horizontal)
             .split(f.size());
         let vertical_split = Layout::new()
             // grid / output / message
-            .constraints(vec![Constraint::Length(grid_height), Constraint::Length(output_height), Constraint::Min(1)])
+            .constraints(vec![
+                Constraint::Length(grid_height),   // grid
+                Constraint::Length(output_height), // output
+                Constraint::Min(1),                // padding
+            ])
             .split(main_layout[0]);
         let data_layout = Layout::new()
             .constraints(vec![Constraint::Length(data_height), Constraint::Min(1)])
             .split(main_layout[1]);
 
-        let output = Paragraph::new(self.out.clone()).wrap(Wrap { trim: false })
+        let output = Paragraph::new(self.out.clone())
+            .wrap(Wrap { trim: false })
             .block(Block::default().borders(Borders::ALL).title("Output"));
 
         f.render_widget(self.data.render(), data_layout[0]);
         f.render_widget(self.grid.render(), vertical_split[0]);
         f.render_widget(output, vertical_split[1]);
-        f.render_widget(self.render_message(), vertical_split[2]);
-    }
-    /// special messages for important events, such as inputting or the sim ending
-    pub fn render_message(&self) -> Paragraph {
-        let text = match self.state {
-            InputtingChar => format!("input char: {}", self.input),
-            InputtingNum => format!("input num: {}", self.input),
-            Ended => "sim ended.\npress r to restart or q to exit.".to_string(),
-            _ if self.str_mode && self.paused => "(string mode, paused)".to_string(),
-            _ if self.str_mode => "(string mode)".to_string(),
-            _ if self.paused => "(paused)".to_string(),
-            _ => String::new(),
-        };
-        Paragraph::new(text)
+        f.render_widget(self.state.render_message(&self.input), vertical_split[2]);
+        if self.paused {
+            f.render_widget(Paragraph::new("paused"), data_layout[1]);
+        }
     }
 
     // TODO CLEAN UP INPUT SYSTEM
@@ -155,7 +143,7 @@ impl Befunge {
     /// input a character and go back to normal running state
     pub fn input_char(&mut self, c: char) {
         self.push(c as u32);
-        self.state = Running;
+        self.state = state::RUNNING;
         self.input.clear();
     }
     /// input char from quiet mode
@@ -169,7 +157,7 @@ impl Befunge {
     /// finalize number input
     pub fn input_num(&mut self) {
         self.push(self.input.parse().unwrap_or(0));
-        self.state = Running;
+        self.state = state::RUNNING;
         self.input.clear();
     }
     /// input num from quiet mode
@@ -257,8 +245,8 @@ impl Befunge {
                 let n = char::from_u32(self.pop()).unwrap_or(' ');
                 self.out.push(n);
             }
-            '&' => self.state = InputtingNum,
-            '~' => self.state = InputtingChar,
+            '&' => self.state = state::INPUTTING_NUM,
+            '~' => self.state = state::INPUTTING_CHAR,
             // movement
             '^' => self.grid.face(Up),
             'v' => self.grid.face(Down),
@@ -279,8 +267,8 @@ impl Befunge {
                 };
             }
             // misc
-            '"' => self.str_mode = !self.str_mode,
-            '#' => self.skip_next = true,
+            '"' => self.state = state::STRING_MODE,
+            '#' => self.state = state::SKIP_NEXT,
             'g' => {
                 let (x, y) = (self.pop(), self.pop());
                 let c = self.grid.char_at(x as usize, y as usize);
@@ -295,10 +283,10 @@ impl Befunge {
                     self.grid.set_char(x, y, c);
                 }
             },
-            '@' => self.state = Ended,
+            '@' => self.state = state::ENDED,
             ' ' => { /* space = no-op */ }
             c => {
-                self.state = Ended;
+                self.state = state::ENDED;
                 panic!("unknown character {} at {:?}", c, self.grid.pos());
             }
         }
