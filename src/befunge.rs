@@ -38,7 +38,7 @@ impl Befunge {
     /// create a new befunge simulation
     pub fn new(args: Arguments) -> Befunge {
         let paused = args.paused;
-        let grid = FungeGrid::new(read_to_string(&args.file).expect("failed to read file"));
+        let grid = FungeGrid::new(read_to_string(&args.file).expect("failed to read file"), args.script);
         Befunge { grid, paused, args, ..Default::default() }
     }
     /// step forward once and run whatever char we're standing on
@@ -307,8 +307,10 @@ impl Befunge {
             '@' => self.state = state::ENDED,
             ' ' => { /* space = no-op */ }
             c => {
-                self.state = state::ENDED;
-                panic!("unknown character {} at {:?}", c, self.grid.pos());
+                if !self.args.ignore {
+                    self.state = state::ENDED;
+                    panic!("unknown character {} at {:?}", c, self.grid.pos());
+                }
             }
         }
     }

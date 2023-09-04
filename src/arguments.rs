@@ -14,6 +14,14 @@ pub struct Arguments {
     #[arg(short, long)]
     pub quiet: bool,
 
+    /// ignore invalid characters
+    #[arg(short, long)]
+    pub ignore: bool,
+
+    /// start instruction at first non-# character
+    #[arg(short, long)]
+    pub script: bool,
+
     /// Target file
     pub file: String
 }

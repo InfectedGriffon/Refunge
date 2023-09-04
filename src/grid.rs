@@ -17,7 +17,7 @@ pub struct FungeGrid {
 }
 impl FungeGrid {
     /// parse some text into the 2d grid of characters
-    pub fn new(text: String) -> FungeGrid {
+    pub fn new(text: String, scriptmode: bool) -> FungeGrid {
         let width = text.lines().max_by_key(|l| l.len()).expect("empty text").len();
         let height = text.lines().count();
         let chars: Vec<Vec<char>> = text.lines().map(|line| {
@@ -26,7 +26,8 @@ impl FungeGrid {
             row
         }).collect();
 
-        FungeGrid { og_chars: chars.clone(), chars, width, height, ..Default::default() }
+        let y = if scriptmode { chars.iter().position(|line| line.get(0) != Some(&'#')).unwrap_or(0) } else { 0 };
+        FungeGrid { og_chars: chars.clone(), chars, y, width, height, ..Default::default() }
     }
     /// reset back to the unmodified grid and return pc to (0,0)
     pub fn reset(&mut self) {
