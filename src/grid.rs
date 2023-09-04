@@ -54,7 +54,7 @@ impl FungeGrid {
     }
     /// copy an area of the grid into a string with line breaks
     pub fn read_from(&self, left: usize, top: usize, right: usize, bottom: usize) -> String {
-        // TODO FIX OUT OF GRID ACCESS
+        if right >= self.width || bottom >= self.height {return String::new()}
         let mut output = String::new();
         for line in &self.chars[top..=bottom] {
             for c in &line[left..=right] {
@@ -85,6 +85,12 @@ impl FungeGrid {
             self.height += 1;
         }
         self.chars[y][x] = c;
+    }
+    /// set a character in the grid at the spot directly ahead of the IP
+    pub fn set_char_ahead(&mut self, c: char) {
+        self.walk();
+        self.set_char(self.x, self.y, c);
+        self.walk_reverse();
     }
 
     /// the full width of the grid

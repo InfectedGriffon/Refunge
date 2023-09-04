@@ -10,8 +10,8 @@ use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction::Horizontal, Layout};
 use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
 use ratatui::Frame;
-use std::fs::read_to_string;
-use std::io::Stdout;
+use std::fs::{File, read_to_string};
+use std::io::{Stdout, Write};
 
 #[derive(Default)]
 pub struct Befunge {
@@ -323,7 +323,10 @@ impl Befunge {
             // misc
             '"' => self.state = state::STRING_MODE,
             '\'' => self.state = state::CHAR_FETCH,
-            's' => todo!("Store Character"),
+            's' => {
+                let c = self.pop_char();
+                self.grid.set_char_ahead(c);
+            },
             '#' => self.state = state::SKIP_NEXT,
             ';' => self.state = state::SKIP_UNTIL,
             'g' => {
