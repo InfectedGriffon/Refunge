@@ -11,6 +11,7 @@ pub struct FungeGrid {
     x: usize,
     y: usize,
     dir: Direction,
+    og_y: usize,
 
     width: usize,
     height: usize
@@ -27,13 +28,13 @@ impl FungeGrid {
         }).collect();
 
         let y = if scriptmode { chars.iter().position(|line| line.get(0) != Some(&'#')).unwrap_or(0) } else { 0 };
-        FungeGrid { og_chars: chars.clone(), chars, y, width, height, ..Default::default() }
+        FungeGrid { og_chars: chars.clone(), chars, og_y: y, y, width, height, ..Default::default() }
     }
     /// reset back to the unmodified grid and return pc to (0,0)
     pub fn reset(&mut self) {
         self.chars = self.og_chars.clone();
         self.x = 0;
-        self.y = 0;
+        self.y = self.og_y;
         self.dir = Right;
     }
 
