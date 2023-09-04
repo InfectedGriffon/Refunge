@@ -2,6 +2,7 @@ use std::collections::VecDeque;
 use ratatui::text::Line;
 use ratatui::widgets::{Block, Borders, Paragraph};
 
+#[allow(unused)]
 #[derive(PartialEq, Debug, Default)]
 enum DataMode { #[default] Stack, Queue }
 
@@ -32,10 +33,12 @@ impl FungeData {
         self.inner.len()
     }
     /// first in, last out
+    #[allow(unused)]
     pub fn stack_mode(&mut self) {
         self.mode = DataMode::Stack;
     }
     /// first in, first out
+    #[allow(unused)]
     pub fn queue_mode(&mut self) {
         self.mode = DataMode::Queue;
     }

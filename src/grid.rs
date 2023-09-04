@@ -21,20 +21,26 @@ impl FungeGrid {
     pub fn new(text: String, scriptmode: bool) -> FungeGrid {
         let width = text.lines().max_by_key(|l| l.len()).expect("empty text").len();
         let height = text.lines().count();
-        let chars: Vec<Vec<char>> = text.lines().map(|line| {
-            let mut row = line.chars().collect::<Vec<char>>();
-            row.extend(vec![' '; width - line.len()]);
-            row
-        }).collect();
+        let chars = text.lines().map(|line|[line.chars().collect::<Vec<char>>(),vec![' ';width-line.len()]].concat()).collect::<Vec<_>>();
 
         let y = if scriptmode { chars.iter().position(|line| line.get(0) != Some(&'#')).unwrap_or(0) } else { 0 };
         FungeGrid { og_chars: chars.clone(), chars, og_y: y, y, width, height, ..Default::default() }
+    }
+    /// place some text within the grid
+    pub fn place(&mut self, text: String, x: usize, y: usize) {
+        for (m, line) in text.lines().enumerate() {
+            for (n, c) in line.chars().enumerate() {
+                self.set_char_or_expand(x+n, y+m, c);
+            }
+        }
     }
     /// reset back to the unmodified grid and return pc to (0,0)
     pub fn reset(&mut self) {
         self.chars = self.og_chars.clone();
         self.x = 0;
         self.y = self.og_y;
+        self.width = self.og_chars.iter().max_by_key(|l| l.len()).unwrap().len();
+        self.height = self.og_chars.len();
         self.dir = Right;
     }
 
@@ -46,6 +52,18 @@ impl FungeGrid {
     pub fn current_char(&self) -> char {
         self.chars[self.y][self.x]
     }
+    /// copy an area of the grid into a string with line breaks
+    pub fn read_from(&self, left: usize, top: usize, right: usize, bottom: usize) -> String {
+        // TODO FIX OUT OF GRID ACCESS
+        let mut output = String::new();
+        for line in &self.chars[top..=bottom] {
+            for c in &line[left..=right] {
+                output.push(*c);
+            }
+        }
+        output
+    }
+
     /// set a character in the grid, panics if outside the grid area
     pub fn set_char(&mut self, x: usize, y: usize, c: char) {
         if x < self.width && y < self.height {

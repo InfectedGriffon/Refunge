@@ -191,6 +191,15 @@ impl Befunge {
     pub fn pop_char(&mut self) -> char {
         char::from_u32(self.data.pop() as u32).unwrap_or(' ')
     }
+    /// get a null-terminated string from the stack
+    pub fn pop_0gnirts(&mut self) -> String {
+        let mut output = String::new();
+        loop {
+            let c = self.pop();
+            if c == 0 {return output}
+            output.push(char::from_u32(c as u32).unwrap_or(' '));
+        };
+    }
     /// push a number onto the top of the stack or end of the queue
     pub fn push(&mut self, n: i32) {
         self.data.push(n)
@@ -242,12 +251,14 @@ impl Befunge {
                 self.push(y);
             }
             '$' => {self.pop();}
-            'q' => self.data.queue_mode(),
-            's' => self.data.stack_mode(),
             'l' => {
                 let n = self.pop();
                 self.data.permute(n as usize);
             }
+            'k' => {
+                todo!("iterate")
+            }
+            'n' => self.data.clear(),
             // input/output
             '.' => {
                 let n = self.pop();
@@ -259,6 +270,29 @@ impl Befunge {
             }
             '&' => self.state = state::INPUTTING_NUM,
             '~' => self.state = state::INPUTTING_CHAR,
+            'i' => {
+                let s = self.pop_0gnirts();
+                let flag = self.pop(); // just the one flag
+                let (y, x) = (self.pop() as usize, self.pop() as usize);
+                let mut text = read_to_string(s).unwrap_or_default();
+                if flag & 1 == 1 {text.retain(|c| !['\r','\n'].contains(&c))};
+                self.grid.place(text, x, y);
+            }
+            'o' => {
+                let filename = self.pop_0gnirts();
+                let _ = self.pop();
+                let (y_a, x_a) = (self.pop() as usize, self.pop() as usize);
+                let (y_b, x_b) = (self.pop() as usize, self.pop() as usize);
+                let content = self.grid.read_from(x_a, y_a, x_b, y_b);
+                if let Ok(mut file) = File::open(filename) {
+                    write!(file, "{content}").unwrap_or_else(|_| self.grid.turn_reverse());
+                }
+                // TODO DEAL WITH FLAG
+                // "if the least significant bit of the flags cell is high,
+                // `o` treats the file as a linear text file;
+                // that is, any spaces before each EOL, and any EOLs before the EOF, are not written out.
+                // The resulting text file is identical in appearance and takes up less storage space."
+            }
             // movement
             '^' => self.grid.face(Up),
             'v' => self.grid.face(Down),
@@ -289,6 +323,7 @@ impl Befunge {
             // misc
             '"' => self.state = state::STRING_MODE,
             '\'' => self.state = state::CHAR_FETCH,
+            's' => todo!("Store Character"),
             '#' => self.state = state::SKIP_NEXT,
             ';' => self.state = state::SKIP_UNTIL,
             'g' => {
