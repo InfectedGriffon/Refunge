@@ -335,7 +335,7 @@ impl Befunge {
                 self.push(c as i32)
             },
             'p' => {
-                let (x, y, c) = (self.pop() as usize, self.pop() as usize, self.pop_char());
+                let (y, x, c) = (self.pop() as usize, self.pop() as usize, self.pop_char());
                 if self.args.expand {
                     self.grid.set_char_or_expand(x, y, c);
                 } else {
