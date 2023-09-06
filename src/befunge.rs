@@ -330,7 +330,7 @@ impl Befunge {
             '#' => self.state = state::SKIP_NEXT,
             ';' => self.state = state::SKIP_UNTIL,
             'g' => {
-                let (x, y) = (self.pop(), self.pop());
+                let (y, x) = (self.pop(), self.pop());
                 let c = self.grid.char_at(x as usize, y as usize);
                 self.push(c as i32)
             },
