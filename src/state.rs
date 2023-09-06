@@ -47,7 +47,7 @@ impl FungeState {
         }
     }
     /// is this state the end of the program
-    pub fn is_end(&self) -> bool {self.move_type == Halted && self.action == Nothing}
+    pub fn is_end(&self) -> bool {self.ends_at == Never && self.move_type == Halted && self.action == Nothing}
     /// are we inputting numbers
     pub fn inputting_num(&self) -> bool {self.message == "input num:"}
     /// are we inputting characters
