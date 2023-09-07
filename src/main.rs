@@ -6,6 +6,7 @@ mod arguments;
 mod input;
 mod data;
 mod state;
+mod pointer;
 
 use clap::Parser;
 use std::io::stdout;

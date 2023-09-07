@@ -12,11 +12,14 @@ use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
 use ratatui::Frame;
 use std::fs::{File, read_to_string};
 use std::io::{Stdout, Write};
+use crate::pointer::InstructionPointer;
 
 #[derive(Default)]
 pub struct Befunge {
     /// the grid that is being traversed
     grid: FungeGrid,
+    /// ip running around executing commands
+    ip: InstructionPointer,
     /// simultaneously a stack and a queue
     data: FungeData,
     /// output text produced by , and .
@@ -38,18 +41,19 @@ impl Befunge {
     /// create a new befunge simulation
     pub fn new(args: Arguments) -> Befunge {
         let paused = args.paused;
-        let grid = FungeGrid::new(read_to_string(&args.file).expect("failed to read file"), args.script);
-        Befunge { grid, paused, args, ..Default::default() }
+        let grid = FungeGrid::new(read_to_string(&args.file).expect("failed to read file"));
+        let ip = InstructionPointer::new(0, grid.start_pos(args.script).1);
+        Befunge { grid, ip, paused, args, ..Default::default() }
     }
     /// step forward once and run whatever char we're standing on
     pub fn tick(&mut self) {
         match self.state.movement() {
             MoveType::Halted => { /* do not walk */}
-            MoveType::Forward => self.grid.walk(),
-            MoveType::Reverse => self.grid.walk_reverse(),
+            MoveType::Forward => self.ip.walk(self.grid.width()-1, self.grid.height()-1),
+            MoveType::Reverse => self.ip.walk_reverse(self.grid.width()-1, self.grid.height()-1),
         }
 
-        let c = self.grid.current_char();
+        let c = self.grid.char_at(self.ip.x, self.ip.y);
         match self.state.action() {
             OnTick::Instruction => self.command(c),
             OnTick::StringPush if c != '"' => self.push(c as i32),
@@ -65,6 +69,7 @@ impl Befunge {
     /// reset everything
     pub fn restart(&mut self) {
         self.grid.reset();
+        self.ip.reset();
         self.data.clear();
         self.out.clear();
         self.state = state::STARTED;
@@ -134,7 +139,7 @@ impl Befunge {
             .block(Block::default().borders(Borders::ALL).title("Output"));
 
         f.render_widget(self.data.render(), data_layout[0]);
-        f.render_widget(self.grid.render(), vertical_split[0]);
+        f.render_widget(self.grid.render(self.ip.x, self.ip.y), vertical_split[0]);
         f.render_widget(output, vertical_split[1]);
         f.render_widget(self.state.render_message(&self.input), vertical_split[2]);
         if self.paused {
@@ -285,7 +290,7 @@ impl Befunge {
                 let (y_b, x_b) = (self.pop() as usize, self.pop() as usize);
                 let content = self.grid.read_from(x_a, y_a, x_b, y_b);
                 if let Ok(mut file) = File::open(filename) {
-                    write!(file, "{content}").unwrap_or_else(|_| self.grid.turn_reverse());
+                    write!(file, "{content}").unwrap_or_else(|_| self.ip.turn_reverse());
                 }
                 // TODO DEAL WITH FLAG
                 // "if the least significant bit of the flags cell is high,
@@ -294,22 +299,22 @@ impl Befunge {
                 // The resulting text file is identical in appearance and takes up less storage space."
             }
             // movement
-            '^' => self.grid.face(Up),
-            'v' => self.grid.face(Down),
-            '>' => self.grid.face(Right),
-            '<' => self.grid.face(Left),
-            '?' => self.grid.face(rand::random()),
-            '_' => if self.pop() == 0 {self.grid.face(Right)} else {self.grid.face(Left)},
-            '|' => if self.pop() == 0 {self.grid.face(Down)} else {self.grid.face(Up)},
-            'r' => self.grid.turn_reverse(),
-            '[' => self.grid.turn_left(),
-            ']' => self.grid.turn_right(),
+            '^' => self.ip.face(Up),
+            'v' => self.ip.face(Down),
+            '>' => self.ip.face(Right),
+            '<' => self.ip.face(Left),
+            '?' => self.ip.face(rand::random()),
+            '_' => if self.pop() == 0 {self.ip.face(Right)} else {self.ip.face(Left)},
+            '|' => if self.pop() == 0 {self.ip.face(Down)} else {self.ip.face(Up)},
+            'r' => self.ip.turn_reverse(),
+            '[' => self.ip.turn_left(),
+            ']' => self.ip.turn_right(),
             'w' => {
                 let (b, a) = (self.pop(), self.pop());
                 if a < b {
-                    self.grid.turn_right()
+                    self.ip.turn_right()
                 } else if a > b {
-                    self.grid.turn_left()
+                    self.ip.turn_left()
                 };
             }
             'j' => {
@@ -325,7 +330,8 @@ impl Befunge {
             '\'' => self.state = state::CHAR_FETCH,
             's' => {
                 let c = self.pop_char();
-                self.grid.set_char_ahead(c);
+                let (x, y) = self.grid.cell_ahead(self.ip.x, self.ip.y, self.ip.dir);
+                self.grid.set_char(x, y, c);
             },
             '#' => self.state = state::SKIP_NEXT,
             ';' => self.state = state::SKIP_UNTIL,
@@ -347,7 +353,7 @@ impl Befunge {
             c => {
                 if !self.args.ignore {
                     self.state = state::ENDED;
-                    panic!("unknown character {} at {:?}", c, self.grid.pos());
+                    panic!("unknown character {} at {:?}", c, self.ip.pos());
                 }
             }
         }

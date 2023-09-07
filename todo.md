@@ -4,7 +4,6 @@
 - organize examples folder better
 - fix up the input system
 - clean up/rearrange instructions
-- separate grid and pointer logic
 
 ## Instructions
 ### Velocity/Vector/Delta System
