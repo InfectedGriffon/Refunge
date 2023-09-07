@@ -13,6 +13,7 @@ use anyhow::Result;
 use crossterm::execute;
 use crossterm::event::{KeyEvent, KeyCode, KeyEventKind, KeyModifiers};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode, LeaveAlternateScreen, EnterAlternateScreen};
+use ctrlc_handler::CtrlCHandler;
 use ratatui::{backend::CrosstermBackend, Terminal};
 use crate::arguments::Arguments;
 use crate::befunge::Befunge;
@@ -23,14 +24,24 @@ fn main() -> Result<()> {
 
     // quiet mode (no display)
     if args.quiet {
+        let max_ticks = args.max_ticks;
         let mut befunge = Befunge::new(args);
-        while !befunge.ended() {
+        let c = CtrlCHandler::new();
+        let mut ticks = 0u32;
+        'main: while !befunge.ended() && c.should_continue() {
             if befunge.inputting_char() {
                 befunge.input_char_quiet();
             } else if befunge.inputting_num() {
                 befunge.input_num_quiet();
             } else {
                 befunge.tick();
+            }
+            if let Some(max) = max_ticks {
+                if ticks > max {
+                    break 'main
+                } else {
+                    ticks += 1;
+                }
             }
         }
         println!("{}", befunge.output());

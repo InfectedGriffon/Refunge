@@ -22,6 +22,10 @@ pub struct Arguments {
     #[arg(short, long)]
     pub script: bool,
 
+    /// runs for this many ticks before stopping automatically
+    #[arg(short, long = "max")]
+    pub max_ticks: Option<u32>,
+
     /// Target file
     pub file: String
 }
