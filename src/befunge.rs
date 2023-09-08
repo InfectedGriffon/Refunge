@@ -275,7 +275,7 @@ impl Befunge {
             // input/output
             '.' => {
                 let n = self.pop();
-                self.out.push_str(&n.to_string());
+                self.out.push_str(&format!("{n} "));
             }
             ',' => {
                 let n = self.pop_char();
