@@ -1,6 +1,7 @@
 use ratatui::prelude::{Line, Modifier, Span, Style};
 use ratatui::widgets::{Block, Borders, Paragraph};
 use crate::direction::Direction;
+use crate::pointer::InstructionPointer;
 
 /// 2d array with toroidal looping
 #[derive(Debug, Default, Clone)]
@@ -46,13 +47,22 @@ impl FungeGrid {
         }
         output
     }
-    /// find the position ahead in the current direction, including looping
-    pub fn cell_ahead(&self, x: usize, y: usize, dir: Direction) -> (usize, usize) {
-        match dir {
-            Direction::Up    => (x, if y==0{self.width-1}else{y-1}),
-            Direction::Down  => (x, if y==self.width-1{0}else{y+1}),
-            Direction::Right => (if x==self.width-1{0}else{x+1}, y),
-            Direction::Left  => (if x==0{self.width-1}else{x-1}, y),
+    /// find the position ahead of an ip in the current direction, including looping
+    pub fn cell_ahead_ip(&self, ip: InstructionPointer) -> (usize, usize) {
+        match ip.dir {
+            Direction::Up    => (ip.x, if ip.y==0{self.width-1}else{ip.y-1}),
+            Direction::Down  => (ip.x, if ip.y==self.width-1{0}else{ip.y+1}),
+            Direction::Right => (if ip.x==self.width-1{0}else{ip.x+1}, ip.y),
+            Direction::Left  => (if ip.x==0{self.width-1}else{ip.x-1}, ip.y),
+        }
+    }
+    /// find the character ahead of an ip in the current direction, including looping
+    pub fn char_ahead_ip(&self, ip: InstructionPointer) -> char {
+        match ip.dir {
+            Direction::Up    => self.chars[if ip.y==0{self.width-1}else{ip.y-1}][ip.x],
+            Direction::Down  => self.chars[if ip.y==self.width-1{0}else{ip.y+1}][ip.x],
+            Direction::Right => self.chars[ip.y][if ip.x==self.width-1{0}else{ip.x+1}],
+            Direction::Left  => self.chars[ip.y][if ip.x==0{self.width-1}else{ip.x-1}],
         }
     }
 

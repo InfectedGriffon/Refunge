@@ -261,7 +261,15 @@ impl Befunge {
                 self.data.permute(n as usize);
             }
             'k' => {
-                todo!("iterate")
+                let n = self.pop();
+                if n == 0 {self.state = state::SKIP_NEXT; return}
+
+                let c = self.grid.char_ahead_ip(self.ip);
+                if c != ' ' && c != ';' {
+                    for _ in 0..n {
+                        self.command(c);
+                    }
+                }
             }
             'n' => self.data.clear(),
             // input/output
