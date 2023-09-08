@@ -338,7 +338,7 @@ impl Befunge {
             '\'' => self.state = state::CHAR_FETCH,
             's' => {
                 let c = self.pop_char();
-                let (x, y) = self.grid.cell_ahead(self.ip.x, self.ip.y, self.ip.dir);
+                let (x, y) = self.grid.cell_ahead_ip(self.ip);
                 self.grid.set_char(x, y, c);
             },
             '#' => self.state = state::SKIP_NEXT,
