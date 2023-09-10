@@ -56,9 +56,4 @@ impl InstructionPointer {
             Direction::Left  => self.x = if self.x == 0 {max_x} else {self.x-1},
         }
     }
-
-    /// current position of the ip (x, y)
-    pub fn pos(&self) -> (usize, usize) {
-        (self.x, self.y)
-    }
 }

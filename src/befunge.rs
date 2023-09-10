@@ -358,12 +358,7 @@ impl Befunge {
             },
             '@' => self.state = state::ENDED,
             ' ' => { /* space = no-op */ }
-            c => {
-                if !self.args.ignore {
-                    self.state = state::ENDED;
-                    panic!("unknown character {} at {:?}", c, self.ip.pos());
-                }
-            }
+            _ => if !self.args.ignore { self.ip.turn_reverse() },
         }
     }
 }
