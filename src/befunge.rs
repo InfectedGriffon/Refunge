@@ -209,6 +209,17 @@ impl Befunge {
     pub fn push(&mut self, n: i32) {
         self.data.push(n)
     }
+    /// push a null-terminated string onto the stack
+    pub fn push_0gnirts(&mut self, s: String) {
+        s.chars().rev().for_each(|c| self.push(c as i32));
+        self.push(0);
+    }
+    // push a 2d coordinate onto the stack
+    pub fn push_vector(&mut self, x: i32, y: i32) {
+        self.push(x);
+        self.push(y);
+    }
+
     /// run the instruction from a given character
     pub fn command(&mut self, c: char) {
         match c {
