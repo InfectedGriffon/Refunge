@@ -240,11 +240,11 @@ impl Befunge {
             }
             '/' => {
                 let (x, y) = (self.pop(), self.pop());
-                self.push(y / x)
+                if x == 0 {self.push(0)} else {self.push(y / x)}
             }
             '%' => {
                 let (x, y) = (self.pop(), self.pop());
-                self.push(y % x)
+                if x == 0 {self.push(0)} else {self.push(y % x)}
             }
             '`' => {
                 let (x, y) = (self.pop(), self.pop());
