@@ -1,7 +1,6 @@
 # Todo
 ## General
 - move over to Funge-98 terminology
-- organize examples folder better
 - fix up the input system
 - clean up/rearrange instructions
 - add scrolling to grid display for big play fields
