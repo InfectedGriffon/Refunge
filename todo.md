@@ -5,7 +5,6 @@
 - clean up/rearrange instructions
 - add scrolling to grid display for big play fields
 - verbose/logging mode to display each action
-- recognize newlines in output text
 
 ## Instructions
 ### Velocity/Vector/Delta System

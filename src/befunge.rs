@@ -109,7 +109,7 @@ impl Befunge {
     /// render the grid, data, output, and message
     pub fn render(&mut self, f: &mut Frame<CrosstermBackend<Stdout>>) {
         let main_width = (self.grid.width() as u16 + 2).max(32);
-        let output_height = self.out.len() as u16 / (main_width - 2) + 3;
+        let output_height = textwrap::wrap(&self.out, main_width as usize-2).len() as u16 + 2;
         let grid_height = self.grid.height() as u16 + 2;
         let data_height = (output_height + grid_height).max(self.data.len() as u16 + 2);
 

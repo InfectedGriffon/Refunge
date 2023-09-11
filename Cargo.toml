@@ -13,3 +13,4 @@ anyhow = "1.0.75"
 clap = { version = "4.4.0", features = ["derive"] }
 lehmer = "3.0.0"
 ctrlc-handler = "0.1.2"
+textwrap = "0.16.0"
