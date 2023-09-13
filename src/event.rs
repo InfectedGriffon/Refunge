@@ -28,7 +28,7 @@ impl EventHandler {
                 let timeout = inner_tickrate.lock().unwrap().saturating_sub(last_tick.elapsed());
                 if poll(timeout).unwrap_or(false) {
                     if let CrosstermEvent::Key(key) = read().unwrap() {
-                        sender.send(Event::Key(key)).unwrap();
+                        sender.send(Event::Key(key)).unwrap_or(());
                     }
                 }
                 if last_tick.elapsed() >= *inner_tickrate.lock().unwrap() {
