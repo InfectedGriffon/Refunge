@@ -89,7 +89,7 @@ pub enum OnTick {
 
 pub const STARTED: FungeState = FungeState::of(Instant, Halted, Instruction);
 pub const RUNNING: FungeState = FungeState::of(Never, Forward, Instruction);
-pub const ENDED: FungeState = FungeState::of_message(Never, Halted, Nothing, "sim ended.\npress r to restart or q to exit.");
+pub const ENDED: FungeState = FungeState::of_message(Never, Halted, Nothing, "sim ended.\npress r to restart, or q to exit.");
 
 pub const SKIP_NEXT: FungeState = FungeState::of(Ticks(1), Forward, Nothing);
 pub const SKIP_UNTIL: FungeState = FungeState::of_message(Char(';'), Forward, Nothing, "(jumping)");

@@ -8,7 +8,7 @@ use crate::state::{self, FungeState, MoveType, OnTick};
 use anyhow::Result;
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction::Horizontal, Layout};
-use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
+use ratatui::widgets::{Block, Borders, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, ScrollDirection, Wrap};
 use ratatui::Frame;
 use std::fs::{File, read_to_string};
 use std::io::{Stdout, Write};
@@ -29,6 +29,9 @@ pub struct Befunge {
     state: FungeState,
     /// toggled by pressing p
     paused: bool,
+    /// how far down the grid we've scrolled
+    scroll: (u16, u16),
+    scroll_state: (ScrollbarState, ScrollbarState),
 
     /// stored command line arguments
     args: Arguments,
@@ -108,43 +111,47 @@ impl Befunge {
 
     /// render the grid, data, output, and message
     pub fn render(&mut self, f: &mut Frame<CrosstermBackend<Stdout>>) {
-        let main_width = (self.grid.width() as u16 + 2).max(32);
-        let output_height = textwrap::wrap(&self.out, main_width as usize-2).len() as u16 + 2;
-        let grid_height = self.grid.height() as u16 + 2;
-        let data_height = (output_height + grid_height).max(self.data.len() as u16 + 2);
-
-        let main_layout = Layout::new()
-            // main area / data
-            .constraints(vec![
-                Constraint::Length(main_width), // vertical_split
-                Constraint::Length(8),          // data_layout
-                Constraint::Min(1),             // padding
-            ])
+        let grid_width = (self.grid.width() as u16+2).clamp(20, 64);
+        let grid_height = (self.grid.height() as u16+2).clamp(9, 27);
+        let output_height = textwrap::wrap(&self.out, grid_width as usize-2).len() as u16+2;
+        let data_height = (grid_height+output_height).max(self.data.len() as u16+2);
+        let chunks = Layout::new()
+            .constraints(vec![Constraint::Length(grid_width),Constraint::Length(8),Constraint::Min(0)])
             .direction(Horizontal)
             .split(f.size());
-        let vertical_split = Layout::new()
-            // grid / output / message
-            .constraints(vec![
-                Constraint::Length(grid_height),   // grid
-                Constraint::Length(output_height), // output
-                Constraint::Min(1),                // padding
-            ])
-            .split(main_layout[0]);
-        let data_layout = Layout::new()
-            .constraints(vec![Constraint::Length(data_height), Constraint::Min(1)])
-            .split(main_layout[1]);
+        let column_a = Layout::new()
+            .constraints(vec![Constraint::Length(grid_height),Constraint::Length(output_height),Constraint::Min(0)])
+            .split(chunks[0]);
+        let column_b = Layout::new()
+            .constraints(vec![Constraint::Length(data_height),Constraint::Min(1)])
+            .split(chunks[1]);
 
         let output = Paragraph::new(self.out.clone())
             .wrap(Wrap { trim: false })
             .block(Block::default().borders(Borders::ALL).title("Output"));
 
-        f.render_widget(self.data.render(), data_layout[0]);
-        f.render_widget(self.grid.render(self.ip.x, self.ip.y), vertical_split[0]);
-        f.render_widget(output, vertical_split[1]);
-        f.render_widget(self.state.render_message(&self.input), vertical_split[2]);
-        if self.paused {
-            f.render_widget(Paragraph::new("paused"), data_layout[1]);
-        }
+        f.render_widget(self.grid.render(self.ip.x, self.ip.y).scroll(self.scroll), column_a[0]);
+        f.render_stateful_widget(Scrollbar::default().orientation(ScrollbarOrientation::HorizontalBottom), column_a[0], &mut self.scroll_state.1);
+        f.render_stateful_widget(Scrollbar::default(), column_a[0], &mut self.scroll_state.0);
+        f.render_widget(output, column_a[1]);
+        f.render_widget(self.state.render_message(&self.input).wrap(Wrap{trim:false}), column_a[2]);
+        f.render_widget(self.data.render(), column_b[0]);
+        if self.paused {f.render_widget(Paragraph::new("paused"), column_b[1])}
+    }
+
+    pub fn vertical_scroll(&mut self, dir: ScrollDirection) {
+        self.scroll.0 = match dir {
+            ScrollDirection::Forward => self.scroll.0+1,
+            ScrollDirection::Backward => self.scroll.0.saturating_sub(1)
+        };
+        self.scroll_state.0 = self.scroll_state.0.position(self.scroll.0);
+    }
+    pub fn horizontal_scroll(&mut self, dir: ScrollDirection) {
+        self.scroll.1 = match dir {
+            ScrollDirection::Forward => self.scroll.1+1,
+            ScrollDirection::Backward => self.scroll.1.saturating_sub(1)
+        };
+        self.scroll_state.1 = self.scroll_state.1.position(self.scroll.1);
     }
 
     // TODO CLEAN UP INPUT SYSTEM

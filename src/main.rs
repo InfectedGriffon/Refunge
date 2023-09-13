@@ -16,6 +16,7 @@ use crossterm::event::{KeyEvent, KeyCode, KeyEventKind, KeyModifiers};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode, LeaveAlternateScreen, EnterAlternateScreen};
 use ctrlc_handler::CtrlCHandler;
 use ratatui::{backend::CrosstermBackend, Terminal};
+use ratatui::widgets::ScrollDirection;
 use crate::arguments::Arguments;
 use crate::befunge::Befunge;
 use crate::event::Event;
@@ -78,6 +79,12 @@ fn main() -> Result<()> {
             Event::Key(key!(',')) => befunge.slow_down(),
             Event::Key(key!(Right)) if befunge.paused() => befunge.tick(),
             Event::Key(key!('p')) => befunge.pause(),
+
+            // scrolling
+            Event::Key(key!('h')) => befunge.horizontal_scroll(ScrollDirection::Backward),
+            Event::Key(key!('j')) => befunge.vertical_scroll(ScrollDirection::Forward),
+            Event::Key(key!('k')) => befunge.vertical_scroll(ScrollDirection::Backward),
+            Event::Key(key!('l')) => befunge.horizontal_scroll(ScrollDirection::Forward),
 
             // exit/restart
             Event::Key(key!('r')) => befunge.restart(),
