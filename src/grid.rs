@@ -56,13 +56,17 @@ impl FungeGrid {
             Direction::Left  => (if ip.x==0{self.width-1}else{ip.x-1}, ip.y),
         }
     }
-    /// find the character ahead of an ip in the current direction, including looping
-    pub fn char_ahead_ip(&self, ip: InstructionPointer) -> char {
-        match ip.dir {
-            Direction::Up    => self.chars[if ip.y==0{self.width-1}else{ip.y-1}][ip.x],
-            Direction::Down  => self.chars[if ip.y==self.width-1{0}else{ip.y+1}][ip.x],
-            Direction::Right => self.chars[ip.y][if ip.x==self.width-1{0}else{ip.x+1}],
-            Direction::Left  => self.chars[ip.y][if ip.x==0{self.width-1}else{ip.x-1}],
+    /// find the next runnable character ahead of a location
+    pub fn runnable_char_ahead(&self, x: usize, y: usize, dir: Direction) -> char {
+        let (y2, x2) = match dir {
+            Direction::Up    => (if y==0{self.width-1}else{y-1}, x),
+            Direction::Down  => (if y==self.width-1{0}else{y+1}, x),
+            Direction::Right => (y, if x==self.width-1{0}else{x+1}),
+            Direction::Left  => (y, if x==0{self.width-1}else{x-1}),
+        };
+        match self.chars[y2][x2] {
+            ' '|';' => self.runnable_char_ahead(x2, y2, dir),
+            c => c
         }
     }
 

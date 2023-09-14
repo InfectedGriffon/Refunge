@@ -282,7 +282,7 @@ impl Befunge {
                 let n = self.pop();
                 if n == 0 {self.state = state::SKIP_NEXT; return}
 
-                let c = self.grid.char_ahead_ip(self.ip);
+                let c = self.grid.runnable_char_ahead(self.ip.x, self.ip.y, self.ip.dir);
                 if c != ' ' && c != ';' {
                     for _ in 0..n {
                         self.command(c);
