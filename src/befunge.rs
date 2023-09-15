@@ -10,7 +10,7 @@ use crate::pointer::InstructionPointer;
 use anyhow::Result;
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction::Horizontal, Layout};
-use ratatui::widgets::{Block, Borders, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, ScrollDirection, Wrap};
+use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
 use ratatui::Frame;
 use std::fs::{File, read_to_string};
 use std::io::{Stdout, Write};
@@ -33,8 +33,9 @@ pub struct Befunge {
     /// toggled by pressing p
     paused: bool,
     /// how far down the grid we've scrolled
-    scroll: (u16, u16),
-    scroll_state: (ScrollbarState, ScrollbarState),
+    grid_scroll: (u16, u16),
+    /// scrolling for output text
+    output_scroll: u16,
 
     /// stored command line arguments
     args: Arguments,
@@ -127,31 +128,23 @@ impl Befunge {
 
         let output = Paragraph::new(self.out.clone())
             .wrap(Wrap { trim: false })
-            .block(Block::default().borders(Borders::ALL).title("Output"));
+            .block(Block::default().borders(Borders::ALL).title("Output"))
+            .scroll((self.output_scroll, 0));
 
-        f.render_widget(self.grid.render(self.ip.x, self.ip.y).scroll(self.scroll), column_a[0]);
-        f.render_stateful_widget(Scrollbar::default().orientation(ScrollbarOrientation::HorizontalBottom), column_a[0], &mut self.scroll_state.1);
-        f.render_stateful_widget(Scrollbar::default(), column_a[0], &mut self.scroll_state.0);
+        f.render_widget(self.grid.render(self.ip.x, self.ip.y).scroll(self.grid_scroll), column_a[0]);
         f.render_widget(output, column_a[1]);
         f.render_widget(self.state.render_message(&self.input).wrap(Wrap{trim:false}), column_a[2]);
         f.render_widget(self.data.render(), column_b[0]);
         if self.paused {f.render_widget(Paragraph::new("paused"), column_b[1])}
     }
 
-    pub fn vertical_scroll(&mut self, dir: ScrollDirection) {
-        self.scroll.0 = match dir {
-            ScrollDirection::Forward => self.scroll.0+1,
-            ScrollDirection::Backward => self.scroll.0.saturating_sub(1)
-        };
-        self.scroll_state.0 = self.scroll_state.0.position(self.scroll.0);
-    }
-    pub fn horizontal_scroll(&mut self, dir: ScrollDirection) {
-        self.scroll.1 = match dir {
-            ScrollDirection::Forward => self.scroll.1+1,
-            ScrollDirection::Backward => self.scroll.1.saturating_sub(1)
-        };
-        self.scroll_state.1 = self.scroll_state.1.position(self.scroll.1);
-    }
+    pub fn scroll_grid_up(&mut self) { self.grid_scroll.0 = self.grid_scroll.0.saturating_sub(1) }
+    pub fn scroll_grid_down(&mut self) { self.grid_scroll.0 += 1 }
+    pub fn scroll_grid_left(&mut self) { self.grid_scroll.1 = self.grid_scroll.1.saturating_sub(1) }
+    pub fn scroll_grid_right(&mut self) { self.grid_scroll.1 += 1 }
+    pub fn scroll_output_up(&mut self) { self.output_scroll = self.output_scroll.saturating_sub(1) }
+    pub fn scroll_output_down(&mut self) { self.output_scroll += 1 }
+
 
     // TODO CLEAN UP INPUT SYSTEM
 
