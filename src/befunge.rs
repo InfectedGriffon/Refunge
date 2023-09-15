@@ -1,3 +1,4 @@
+use std::env::{args, vars};
 use crate::arguments::Arguments;
 use crate::data::FungeData;
 use crate::direction::Direction::*;
@@ -5,6 +6,7 @@ use crate::event::{Event, EventHandler};
 use crate::grid::FungeGrid;
 use crate::input::take_input_parse;
 use crate::state::{self, FungeState, MoveType, OnTick};
+use crate::pointer::InstructionPointer;
 use anyhow::Result;
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction::Horizontal, Layout};
@@ -12,7 +14,8 @@ use ratatui::widgets::{Block, Borders, Paragraph, Scrollbar, ScrollbarOrientatio
 use ratatui::Frame;
 use std::fs::{File, read_to_string};
 use std::io::{Stdout, Write};
-use crate::pointer::InstructionPointer;
+use std::process::Command;
+use chrono::{Datelike, Timelike};
 
 #[derive(Default)]
 pub struct Befunge {
@@ -361,6 +364,68 @@ impl Befunge {
             },
             '#' => self.state = state::SKIP_NEXT,
             ';' => self.state = state::SKIP_UNTIL,
+            '=' => {
+                let cmd = self.pop_0gnirts();
+                self.push(Command::new("cmd.exe")
+                    .args(vec!["/c", &cmd])
+                    .status()
+                    .expect("failed to execute")
+                    .code()
+                    .unwrap_or_default()
+                );
+            }
+            'y' => {
+                let n = self.pop();
+
+                let info: Vec<Box<fn(&mut Befunge)>> = vec![
+                    // 1: flags getch, =, o, i, no t
+                    Box::new(|b| b.push(0b11110)),
+                    // 2: bytes per cell (i32 = 32 bits = 4 bytes)
+                    Box::new(|b| b.push(4)),
+                    // 3: handprint
+                    Box::new(|b| b.push(hexify("RFNG"))),
+                    // 4: version number
+                    Box::new(|b| b.push(021)),
+                    // 5: how does "=" work
+                    Box::new(|b| b.push(1)),
+                    // 6: path separator
+                    Box::new(|b| b.push(std::path::MAIN_SEPARATOR as i32)),
+                    // 7: dimension
+                    Box::new(|b| b.push(2)),
+                    // 8: pointer id
+                    Box::new(|b| b.push(0)),
+                    // 9: team number
+                    Box::new(|b| b.push(0)),
+                    // 10: pos
+                    Box::new(|b| b.push_vector(b.ip.x as i32, b.ip.y as i32)),
+                    // 11: delta
+                    Box::new(|b| { let (dx, dy) = b.ip.dir.as_delta(); b.push_vector(dx, dy) }),
+                    // 12: storage offset
+                    Box::new(|b| b.push_vector(0, 0)),
+                    // 13: least point
+                    Box::new(|b| b.push_vector(0, 0)),
+                    // 14: greatest point
+                    Box::new(|b| b.push_vector(b.grid.width() as i32, b.grid.height() as i32)),
+                    // 15: ((year - 1900) * 256 * 256) + (month * 256) + (day of month)
+                    Box::new(|b| { let now = chrono::Utc::now(); b.push(((now.year()-1900)*256*256) + (now.month() as i32*256) + now.day() as i32) }),
+                    // 16: (hour * 256 * 256) + (minute * 256) + (second)
+                    Box::new(|b| { let now = chrono::Utc::now(); b.push(now.hour() as i32*256*256 + now.minute() as i32*256 + now.second() as i32) }),
+                    // 17: size of stack-stack
+                    Box::new(|b| b.push(1)),
+                    // 18: size of stack
+                    Box::new(|b| b.push(b.data.len() as i32)),
+                    // 19: program arguments as 0gnirts, with another nul at end
+                    Box::new(|b| b.push_0gnirts(args().collect::<Vec<String>>().join("\x00") + "\x00")),
+                    // 20: env vars as key=val 0nigrts, with another null at end
+                    Box::new(|b| b.push_0gnirts(vars().map(|(k,v)|format!("{k}={v}")).collect::<Vec<String>>().join("\x00") + "\x00")),
+                ];
+
+                match n {
+                    ..=0 => info.iter().rev().for_each(|i| i(self)),
+                    1..=20 => info[n as usize-1](self),
+                    21.. => (0..n-20).for_each(|_|{self.pop();})
+                }
+            }
             'g' => {
                 let (y, x) = (self.pop(), self.pop());
                 let c = self.grid.char_at(x as usize, y as usize);
@@ -379,4 +444,15 @@ impl Befunge {
             _ => if !self.args.ignore { self.ip.turn_reverse() },
         }
     }
+}
+
+/// convert a string into hexadecimal format (for hand/fingerprints)
+fn hexify(s: &str) -> i32 {
+    let mut hex = 0;
+    let mut shift_counter = s.len() * 8;
+    for c in s.chars() {
+        shift_counter -= 8;
+        hex |= (c as i32) << shift_counter;
+    }
+    hex
 }
