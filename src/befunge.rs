@@ -339,9 +339,9 @@ impl Befunge {
             'w' => {
                 let (b, a) = (self.pop(), self.pop());
                 if a < b {
-                    self.ip.turn_right()
-                } else if a > b {
                     self.ip.turn_left()
+                } else if a > b {
+                    self.ip.turn_right()
                 };
             }
             'j' => {
@@ -429,15 +429,17 @@ impl Befunge {
             }
             'g' => {
                 let (y, x) = (self.pop(), self.pop());
+                if x < 0 || y < 0 { return }
                 let c = self.grid.char_at(x as usize, y as usize);
                 self.push(c as i32)
             },
             'p' => {
-                let (y, x, c) = (self.pop() as usize, self.pop() as usize, self.pop_char());
+                let (y, x, c) = (self.pop(), self.pop(), self.pop_char());
+                if x < 0 || y < 0 { return }
                 if self.args.expand {
-                    self.grid.set_char_or_expand(x, y, c);
+                    self.grid.set_char_or_expand(x as usize, y as usize, c);
                 } else {
-                    self.grid.set_char(x, y, c);
+                    self.grid.set_char(x as usize, y as usize, c);
                 }
             },
             '@' => self.state = state::ENDED,
