@@ -5,7 +5,7 @@ use crate::direction::Direction::*;
 use crate::event::{Event, EventHandler};
 use crate::grid::FungeGrid;
 use crate::input::take_input_parse;
-use crate::state::{self, FungeState, MoveType, OnTick};
+use crate::state::{self, FungeState, OnTick};
 use crate::pointer::InstructionPointer;
 use anyhow::Result;
 use ratatui::backend::CrosstermBackend;
@@ -53,13 +53,9 @@ impl Befunge {
     }
     /// step forward once and run whatever char we're standing on
     pub fn tick(&mut self) {
-        match self.state.movement() {
-            MoveType::Halted => { /* do not walk */}
-            MoveType::Forward => self.ip.walk(self.grid.width()-1, self.grid.height()-1),
-            MoveType::Reverse => self.ip.walk_reverse(self.grid.width()-1, self.grid.height()-1),
-        }
+        if self.state.moving() { self.walk() }
 
-        let c = self.grid.char_at(self.ip.x, self.ip.y);
+        let c = self.current_char();
         match self.state.action() {
             OnTick::Instruction => self.command(c),
             OnTick::StringPush if c != '"' => self.push(c as i32),
@@ -230,6 +226,19 @@ impl Befunge {
         self.push(y);
     }
 
+    /// walk the current ip forward by a space
+    pub fn walk(&mut self) {
+        self.ip.walk(self.grid.width()-1, self.grid.height()-1);
+    }
+    /// walk the current ip backward by a space
+    pub fn walk_reverse(&mut self) {
+        self.ip.walk_reverse(self.grid.width()-1, self.grid.height()-1);
+    }
+    /// character under the current ip
+    pub fn current_char(&self) -> char {
+        self.grid.char_at(self.ip.x, self.ip.y)
+    }
+
     /// run the instruction from a given character
     pub fn command(&mut self, c: char) {
         match c {
@@ -283,14 +292,10 @@ impl Befunge {
             }
             'k' => {
                 let n = self.pop();
-                if n == 0 {self.state = state::SKIP_NEXT; return}
+                if n == 0 {return self.walk()}
 
                 let c = self.grid.runnable_char_ahead(self.ip.x, self.ip.y, self.ip.dir);
-                if c != ' ' && c != ';' {
-                    for _ in 0..n {
-                        self.command(c);
-                    }
-                }
+                for _ in 0..n { self.command(c) }
             }
             'n' => self.data.clear(),
             // input/output
@@ -349,9 +354,9 @@ impl Befunge {
             'j' => {
                 let n = self.pop();
                 if n < 0 {
-                    self.state = state::SKIP_N_REV(n.abs() as u8);
+                    for _ in 0..n.abs() {self.walk_reverse()}
                 } else if n > 0 {
-                    self.state = state::SKIP_N(n.abs() as u8);
+                    for _ in 0..n {self.walk()}
                 }
             }
             // misc
@@ -362,8 +367,11 @@ impl Befunge {
                 let (x, y) = self.grid.cell_ahead_ip(self.ip);
                 self.grid.set_char(x, y, c);
             },
-            '#' => self.state = state::SKIP_NEXT,
-            ';' => self.state = state::SKIP_UNTIL,
+            '#' => self.walk(),
+            ';' => {
+                self.walk(); // move off of current semicolon
+                while self.current_char() != ';' {self.walk()}
+            },
             '=' => {
                 let cmd = self.pop_0gnirts();
                 self.push(Command::new("cmd.exe")
