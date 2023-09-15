@@ -34,8 +34,8 @@ impl Direction {
     /// represent the direction as a delta (using right/down positive)
     pub fn as_delta(&self) -> (i32, i32) {
         match self {
-            Up    => (0, -1),
-            Down  => (0, 1),
+            Up    => (0, 1),
+            Down  => (0, -1),
             Right => (1, 0),
             Left  => (-1, 0),
         }
