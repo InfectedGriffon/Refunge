@@ -2,7 +2,6 @@
 ## General
 - move over to Funge-98 terminology
 - fix up the input system
-- clean up/rearrange instructions
 - add scrolling to grid display for big play fields
 - verbose/logging mode to display each action
 
@@ -16,9 +15,6 @@
 ### Fingerprints
 - `()`: load/unload semantics
 - `A-Z`: fingerprint-defined functions
-### System
-- `=`: pop 0"gnirt" and execute as system command
-- `y`: push system info
 ### Stack Stacks
 - `{}`: create/destroy new stack
 - `u`: move data between stacks

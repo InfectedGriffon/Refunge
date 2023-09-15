@@ -235,73 +235,100 @@ impl Befunge {
     /// run the instruction from a given character
     pub fn command(&mut self, c: char) {
         match c {
-            // integers
-            '0'..='9'|'a'..='f' => self.push(c.to_digit(16).unwrap() as i32),
-            // math
-            '+' => {
-                let (x, y) = (self.pop(), self.pop());
-                self.push(x.saturating_add(y))
-            }
-            '-' => {
-                let (x, y) = (self.pop(), self.pop());
-                self.push(y.saturating_sub(x));
-            }
-            '*' => {
-                let (x, y) = (self.pop(), self.pop());
-                self.push(x.saturating_mul(y))
-            }
-            '/' => {
-                let (x, y) = (self.pop(), self.pop());
-                if x == 0 {self.push(0)} else {self.push(y / x)}
-            }
-            '%' => {
-                let (x, y) = (self.pop(), self.pop());
-                if x == 0 {self.push(0)} else {self.push(y % x)}
-            }
-            '`' => {
-                let (x, y) = (self.pop(), self.pop());
-                self.push(if y > x {1} else {0})
-            }
-            // gambits
-            ':' => {
-                let n = self.pop();
-                self.push(n);
-                self.push(n);
-            }
             '!' => {
                 let n = self.pop();
                 self.push(if n == 0 {1} else {0})
             }
-            '\\' => {
-                let x = self.pop();
-                let y = self.pop();
-                self.push(x);
-                self.push(y);
-            }
+            '"' => self.state = state::STRING_MODE,
+            '#' => self.walk(),
             '$' => {self.pop();}
-            'l' => {
-                let n = self.pop();
-                self.data.permute(n as usize);
+            '%' => {
+                let (x, y) = (self.pop(), self.pop());
+                if x == 0 {self.push(0)} else {self.push(y % x)}
             }
-            'k' => {
-                let n = self.pop();
-                if n == 0 {return self.walk()}
-
-                let c = self.grid.runnable_char_ahead(self.ip.x, self.ip.y, self.ip.dir);
-                for _ in 0..n { self.command(c) }
+            '&' => self.state = state::INPUTTING_NUM,
+            '\'' => self.state = state::CHAR_FETCH,
+            // todo: (
+            // todo: )
+            '*' => {
+                let (x, y) = (self.pop(), self.pop());
+                self.push(x.saturating_mul(y))
             }
-            'n' => self.data.clear(),
-            // input/output
-            '.' => {
-                let n = self.pop();
-                self.out.push_str(&format!("{n} "));
+            '+' => {
+                let (x, y) = (self.pop(), self.pop());
+                self.push(x.saturating_add(y))
             }
             ',' => {
                 let n = self.pop_char();
                 self.out.push(n);
             }
-            '&' => self.state = state::INPUTTING_NUM,
-            '~' => self.state = state::INPUTTING_CHAR,
+            '-' => {
+                let (x, y) = (self.pop(), self.pop());
+                self.push(y.saturating_sub(x));
+            }
+            '.' => {
+                let n = self.pop();
+                self.out.push_str(&format!("{n} "));
+            }
+            '/' => {
+                let (x, y) = (self.pop(), self.pop());
+                if x == 0 {self.push(0)} else {self.push(y / x)}
+            }
+            '0' => self.push(0),
+            '1' => self.push(1),
+            '2' => self.push(2),
+            '3' => self.push(3),
+            '4' => self.push(4),
+            '5' => self.push(5),
+            '6' => self.push(6),
+            '7' => self.push(7),
+            '8' => self.push(8),
+            '9' => self.push(9),
+            ':' => {
+                let n = self.pop();
+                self.push(n);
+                self.push(n);
+            }
+            ';' => {
+                self.walk(); // move off of current semicolon
+                while self.current_char() != ';' {self.walk()}
+            },
+            '<' => self.ip.face(Left),
+            '=' => {
+                let cmd = self.pop_0gnirts();
+                self.push(Command::new("cmd.exe")
+                    .args(vec!["/c", &cmd])
+                    .status()
+                    .expect("failed to execute")
+                    .code()
+                    .unwrap_or_default());
+            }
+            '>' => self.ip.face(Right),
+            '?' => self.ip.face(rand::random()),
+            '@' => self.state = state::ENDED,
+            // A-Z => todo
+            '[' => self.ip.turn_left(),
+            '\\' => { let (x, y) = (self.pop(), self.pop()); self.push_vector(x, y) }
+            ']' => self.ip.turn_right(),
+            '^' => self.ip.face(Up),
+            '_' => if self.pop() == 0 {self.ip.face(Right)} else {self.ip.face(Left)},
+            '`' => {
+                let (x, y) = (self.pop(), self.pop());
+                self.push(if y > x {1} else {0})
+            }
+            'a' => self.push(10),
+            'b' => self.push(11),
+            'c' => self.push(12),
+            'd' => self.push(13),
+            'e' => self.push(14),
+            'f' => self.push(15),
+            'g' => {
+                let (y, x) = (self.pop(), self.pop());
+                if x < 0 || y < 0 { return }
+                let c = self.grid.char_at(x as usize, y as usize);
+                self.push(c as i32)
+            },
+            // trefunge only: h
             'i' => {
                 let s = self.pop_0gnirts();
                 let flag = self.pop(); // just the one flag
@@ -310,6 +337,27 @@ impl Befunge {
                 if flag & 1 == 1 {text.retain(|c| !['\r','\n'].contains(&c))};
                 self.grid.place(text, x, y);
             }
+            'j' => {
+                let n = self.pop();
+                if n < 0 {
+                    for _ in 0..n.abs() {self.walk_reverse()}
+                } else if n > 0 {
+                    for _ in 0..n {self.walk()}
+                }
+            }
+            'k' => {
+                let n = self.pop();
+                if n == 0 {return self.walk()}
+
+                let c = self.grid.runnable_char_ahead(self.ip.x, self.ip.y, self.ip.dir);
+                for _ in 0..n { self.command(c) }
+            }
+            'l' => {
+                let n = self.pop();
+                self.data.permute(n as usize);
+            }
+            // trefunge only: m
+            'n' => self.data.clear(),
             'o' => {
                 let filename = self.pop_0gnirts();
                 let _ = self.pop();
@@ -325,17 +373,25 @@ impl Befunge {
                 // that is, any spaces before each EOL, and any EOLs before the EOF, are not written out.
                 // The resulting text file is identical in appearance and takes up less storage space."
             }
-            // movement
-            '^' => self.ip.face(Up),
-            'v' => self.ip.face(Down),
-            '>' => self.ip.face(Right),
-            '<' => self.ip.face(Left),
-            '?' => self.ip.face(rand::random()),
-            '_' => if self.pop() == 0 {self.ip.face(Right)} else {self.ip.face(Left)},
-            '|' => if self.pop() == 0 {self.ip.face(Down)} else {self.ip.face(Up)},
+            'p' => {
+                let (y, x, c) = (self.pop(), self.pop(), self.pop_char());
+                if x < 0 || y < 0 { return }
+                if self.args.expand {
+                    self.grid.set_char_or_expand(x as usize, y as usize, c);
+                } else {
+                    self.grid.set_char(x as usize, y as usize, c);
+                }
+            },
+            // todo: q
             'r' => self.ip.turn_reverse(),
-            '[' => self.ip.turn_left(),
-            ']' => self.ip.turn_right(),
+            's' => {
+                let c = self.pop_char();
+                let (x, y) = self.grid.cell_ahead_ip(self.ip);
+                self.grid.set_char(x, y, c);
+            },
+            // todo: t
+            // todo: u
+            'v' => self.ip.face(Down),
             'w' => {
                 let (b, a) = (self.pop(), self.pop());
                 if a < b {
@@ -344,37 +400,7 @@ impl Befunge {
                     self.ip.turn_right()
                 };
             }
-            'j' => {
-                let n = self.pop();
-                if n < 0 {
-                    for _ in 0..n.abs() {self.walk_reverse()}
-                } else if n > 0 {
-                    for _ in 0..n {self.walk()}
-                }
-            }
-            // misc
-            '"' => self.state = state::STRING_MODE,
-            '\'' => self.state = state::CHAR_FETCH,
-            's' => {
-                let c = self.pop_char();
-                let (x, y) = self.grid.cell_ahead_ip(self.ip);
-                self.grid.set_char(x, y, c);
-            },
-            '#' => self.walk(),
-            ';' => {
-                self.walk(); // move off of current semicolon
-                while self.current_char() != ';' {self.walk()}
-            },
-            '=' => {
-                let cmd = self.pop_0gnirts();
-                self.push(Command::new("cmd.exe")
-                    .args(vec!["/c", &cmd])
-                    .status()
-                    .expect("failed to execute")
-                    .code()
-                    .unwrap_or_default()
-                );
-            }
+            // todo: x
             'y' => {
                 let n = self.pop();
 
@@ -427,22 +453,11 @@ impl Befunge {
                     21.. => (0..n-20).for_each(|_|{self.pop();})
                 }
             }
-            'g' => {
-                let (y, x) = (self.pop(), self.pop());
-                if x < 0 || y < 0 { return }
-                let c = self.grid.char_at(x as usize, y as usize);
-                self.push(c as i32)
-            },
-            'p' => {
-                let (y, x, c) = (self.pop(), self.pop(), self.pop_char());
-                if x < 0 || y < 0 { return }
-                if self.args.expand {
-                    self.grid.set_char_or_expand(x as usize, y as usize, c);
-                } else {
-                    self.grid.set_char(x as usize, y as usize, c);
-                }
-            },
-            '@' => self.state = state::ENDED,
+            // todo: z
+            // todo: {
+            '|' => if self.pop() == 0 {self.ip.face(Down)} else {self.ip.face(Up)},
+            // todo: }
+            '~' => self.state = state::INPUTTING_CHAR,
             ' ' => { /* space = no-op */ }
             _ => if !self.args.ignore { self.ip.turn_reverse() },
         }
