@@ -59,7 +59,15 @@ impl Befunge {
         let c = self.current_char();
         match self.state.action() {
             OnTick::Instruction => self.command(c),
-            OnTick::StringPush if c != '"' => self.push(c as i32),
+            OnTick::StringPush => match c {
+                '"' => {}
+                ' ' => {
+                    while self.current_char() == ' ' {self.walk()}
+                    self.walk_reverse();
+                    self.push(32);
+                }
+                _ => self.push(c as i32),
+            },
             _ => {}
         }
 
@@ -235,6 +243,10 @@ impl Befunge {
     /// run the instruction from a given character
     pub fn command(&mut self, c: char) {
         match c {
+            ' ' => {
+                while self.current_char() == ' ' { self.walk() }
+                self.walk_reverse();
+            }
             '!' => {
                 let n = self.pop();
                 self.push(if n == 0 {1} else {0})
@@ -453,12 +465,11 @@ impl Befunge {
                     21.. => (0..n-20).for_each(|_|{self.pop();})
                 }
             }
-            // todo: z
+            'z' => { /* nop */ }
             // todo: {
             '|' => if self.pop() == 0 {self.ip.face(Down)} else {self.ip.face(Up)},
             // todo: }
             '~' => self.state = state::INPUTTING_CHAR,
-            ' ' => { /* space = no-op */ }
             _ => if !self.args.ignore { self.ip.turn_reverse() },
         }
     }
