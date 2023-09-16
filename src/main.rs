@@ -45,7 +45,6 @@ fn main() -> Result<()> {
                 }
             }
         }
-        println!("{}", befunge.output());
         return Ok(());
     }
 

@@ -91,10 +91,6 @@ impl Befunge {
     pub fn pause(&mut self) {
         self.paused = !self.paused;
     }
-    /// readonly output because exposing fields is gross
-    pub fn output(&self) -> String {
-        self.out.clone()
-    }
 
     /// is the sim not paused or at the end
     pub fn running(&self) -> bool {
@@ -271,8 +267,12 @@ impl Befunge {
                 self.push(x.saturating_add(y))
             }
             ',' => {
-                let n = self.pop_char();
-                self.out.push(n);
+                let c = self.pop_char();
+                if self.args.quiet {
+                    print!("{c}")
+                } else {
+                    self.out.push(c);
+                }
             }
             '-' => {
                 let (x, y) = (self.pop(), self.pop());
@@ -280,7 +280,11 @@ impl Befunge {
             }
             '.' => {
                 let n = self.pop();
-                self.out.push_str(&format!("{n} "));
+                if self.args.quiet {
+                    print!("{n} ");
+                } else {
+                    self.out.push_str(&format!("{n} "));
+                }
             }
             '/' => {
                 let (x, y) = (self.pop(), self.pop());
