@@ -2,12 +2,9 @@
 ## General
 - move over to Funge-98 terminology
 - fix up the input system
-- add scrolling to grid display for big play fields
 - verbose/logging mode to display each action
 
 ## Instructions
-### Velocity/Vector/Delta System
-- `x`: pop vector, set delta to vector
 ### Concurrency
 - `t`: Split a new instruction pointer
 - `@`: destroy single ip (instead of stopping whole program)

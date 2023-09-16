@@ -1,6 +1,6 @@
 use ratatui::prelude::{Line, Modifier, Span, Style};
 use ratatui::widgets::{Block, Borders, Paragraph};
-use crate::direction::Direction;
+use crate::delta::Delta;
 use crate::pointer::InstructionPointer;
 
 /// 2d array with toroidal looping
@@ -49,23 +49,17 @@ impl FungeGrid {
     }
     /// find the position ahead of an ip in the current direction, including looping
     pub fn cell_ahead_ip(&self, ip: InstructionPointer) -> (usize, usize) {
-        match ip.dir {
-            Direction::Up    => (ip.x, if ip.y==0{self.width-1}else{ip.y-1}),
-            Direction::Down  => (ip.x, if ip.y==self.width-1{0}else{ip.y+1}),
-            Direction::Right => (if ip.x==self.width-1{0}else{ip.x+1}, ip.y),
-            Direction::Left  => (if ip.x==0{self.width-1}else{ip.x-1}, ip.y),
-        }
+        (
+            (ip.x as i32 + ip.d.x).rem_euclid(self.width as i32) as usize,
+            (ip.y as i32 + ip.d.y).rem_euclid(self.height as i32) as usize
+        )
     }
     /// find the next runnable character ahead of a location
-    pub fn runnable_char_ahead(&self, x: usize, y: usize, dir: Direction) -> char {
-        let (y2, x2) = match dir {
-            Direction::Up    => (if y==0{self.width-1}else{y-1}, x),
-            Direction::Down  => (if y==self.width-1{0}else{y+1}, x),
-            Direction::Right => (y, if x==self.width-1{0}else{x+1}),
-            Direction::Left  => (y, if x==0{self.width-1}else{x-1}),
-        };
+    pub fn runnable_char_ahead(&self, x: usize, y: usize, d: Delta) -> char {
+        let x2 = (x as i32 + d.x).rem_euclid(self.width as i32) as usize;
+        let y2 = (y as i32 + d.y).rem_euclid(self.height as i32) as usize;
         match self.chars[y2][x2] {
-            ' '|';' => self.runnable_char_ahead(x2, y2, dir),
+            ' '|';' => self.runnable_char_ahead(x2, y2, d),
             c => c
         }
     }

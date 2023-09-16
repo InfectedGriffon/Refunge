@@ -1,59 +1,47 @@
-use crate::direction::Direction;
+use crate::delta::Delta;
 
 /// a befunge ip, with a 2d coordinate and direction
 #[derive(Debug, Default, Clone, Copy)]
 pub struct InstructionPointer {
     pub x: usize,
     pub y: usize,
-    pub dir: Direction,
+    pub d: Delta,
 
     original: (usize, usize),
 }
 impl InstructionPointer {
     /// create a new instruction pointer facing right at specified coordinates
     pub fn new(x: usize, y: usize) -> InstructionPointer {
-        Self { x, y, original: (x, y), dir: Direction::Right }
+        Self { x, y, original: (x, y), ..Default::default() }
     }
     /// reset ip to original y facing right
     pub fn reset(&mut self) {
         self.x = self.original.0;
         self.y = self.original.1;
-        self.dir = Direction::Right;
+        self.d = Default::default();
     }
 
-    /// change direction
-    pub fn face(&mut self, dir: Direction) {
-        self.dir = dir
-    }
     /// rotate by 180 degrees
     pub fn turn_reverse(&mut self) {
-        self.dir = self.dir.next().next();
+        self.d = Delta::new(-self.d.x, -self.d.y);
     }
     /// rotate by 90 degrees anticlockwise
     pub fn turn_left(&mut self) {
-        self.dir = self.dir.next().next().next();
+        self.d = Delta::new(self.d.y, -self.d.x);
     }
     /// rotate by 90 degrees clockwise
     pub fn turn_right(&mut self) {
-        self.dir = self.dir.next();
+        self.d = Delta::new(-self.d.y, self.d.x)
     }
 
     /// move one space forwards, wrapping around if needed
     pub fn walk(&mut self, max_x: usize, max_y: usize) {
-        match self.dir {
-            Direction::Up    => self.y = if self.y == 0 {max_y} else {self.y-1},
-            Direction::Down  => self.y = if self.y == max_y {0} else {self.y+1},
-            Direction::Right => self.x = if self.x == max_x {0} else {self.x+1},
-            Direction::Left  => self.x = if self.x == 0 {max_x} else {self.x-1},
-        }
+        self.x = (self.x as i32 + self.d.x).rem_euclid(max_x as i32) as usize;
+        self.y = (self.y as i32 + self.d.y).rem_euclid(max_y as i32) as usize;
     }
     /// move one space backwards, wrapping around if needed
     pub fn walk_reverse(&mut self, max_x: usize, max_y: usize) {
-        match self.dir.next().next() {
-            Direction::Up    => self.y = if self.y == 0 {max_y} else {self.y-1},
-            Direction::Down  => self.y = if self.y == max_y {0} else {self.y+1},
-            Direction::Right => self.x = if self.x == max_x {0} else {self.x+1},
-            Direction::Left  => self.x = if self.x == 0 {max_x} else {self.x-1},
-        }
+        self.x = (self.x as i32 - self.d.x).rem_euclid(max_x as i32) as usize;
+        self.y = (self.y as i32 - self.d.y).rem_euclid(max_y as i32) as usize;
     }
 }

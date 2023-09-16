@@ -1,5 +1,5 @@
 mod befunge;
-mod direction;
+mod delta;
 mod grid;
 mod event;
 mod arguments;

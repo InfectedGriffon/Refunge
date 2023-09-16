@@ -1,7 +1,6 @@
 use std::env::{args, vars};
 use crate::arguments::Arguments;
 use crate::data::FungeData;
-use crate::direction::Direction::*;
 use crate::event::{Event, EventHandler};
 use crate::grid::FungeGrid;
 use crate::input::take_input_parse;
@@ -16,6 +15,7 @@ use std::fs::{File, read_to_string};
 use std::io::{Stdout, Write};
 use std::process::Command;
 use chrono::{Datelike, Timelike};
+use crate::delta;
 
 #[derive(Default)]
 pub struct Befunge {
@@ -225,11 +225,11 @@ impl Befunge {
 
     /// walk the current ip forward by a space
     pub fn walk(&mut self) {
-        self.ip.walk(self.grid.width()-1, self.grid.height()-1);
+        self.ip.walk(self.grid.width(), self.grid.height());
     }
     /// walk the current ip backward by a space
     pub fn walk_reverse(&mut self) {
-        self.ip.walk_reverse(self.grid.width()-1, self.grid.height()-1);
+        self.ip.walk_reverse(self.grid.width(), self.grid.height());
     }
     /// character under the current ip
     pub fn current_char(&self) -> char {
@@ -309,7 +309,7 @@ impl Befunge {
                 self.walk(); // move off of current semicolon
                 while self.current_char() != ';' {self.walk()}
             },
-            '<' => self.ip.face(Left),
+            '<' => self.ip.d = delta::EAST,
             '=' => {
                 let cmd = self.pop_0gnirts();
                 self.push(Command::new("cmd.exe")
@@ -319,15 +319,15 @@ impl Befunge {
                     .code()
                     .unwrap_or_default());
             }
-            '>' => self.ip.face(Right),
-            '?' => self.ip.face(rand::random()),
+            '>' => self.ip.d = delta::WEST,
+            '?' => self.ip.d = rand::random(),
             '@' => self.state = state::ENDED,
             // A-Z => todo
             '[' => self.ip.turn_left(),
             '\\' => { let (x, y) = (self.pop(), self.pop()); self.push_vector(x, y) }
             ']' => self.ip.turn_right(),
-            '^' => self.ip.face(Up),
-            '_' => if self.pop() == 0 {self.ip.face(Right)} else {self.ip.face(Left)},
+            '^' => self.ip.d = delta::NORTH,
+            '_' => if self.pop() == 0 {self.ip.d = delta::WEST } else {self.ip.d = delta::EAST },
             '`' => {
                 let (x, y) = (self.pop(), self.pop());
                 self.push(if y > x {1} else {0})
@@ -365,7 +365,7 @@ impl Befunge {
                 let n = self.pop();
                 if n == 0 {return self.walk()}
 
-                let c = self.grid.runnable_char_ahead(self.ip.x, self.ip.y, self.ip.dir);
+                let c = self.grid.runnable_char_ahead(self.ip.x, self.ip.y, self.ip.d);
                 for _ in 0..n { self.command(c) }
             }
             'l' => {
@@ -407,7 +407,7 @@ impl Befunge {
             },
             // todo: t
             // todo: u
-            'v' => self.ip.face(Down),
+            'v' => self.ip.d = delta::SOUTH,
             'w' => {
                 let (b, a) = (self.pop(), self.pop());
                 if a < b {
@@ -416,7 +416,11 @@ impl Befunge {
                     self.ip.turn_right()
                 };
             }
-            // todo: x
+            'x' => {
+                let (y, x) = (self.pop(), self.pop());
+                self.ip.d.x = x;
+                self.ip.d.y = y;
+            }
             'y' => {
                 let n = self.pop();
 
@@ -442,7 +446,7 @@ impl Befunge {
                     // 10: pos
                     Box::new(|b| b.push_vector(b.ip.x as i32, b.ip.y as i32)),
                     // 11: delta
-                    Box::new(|b| { let (dx, dy) = b.ip.dir.as_delta(); b.push_vector(dx, dy) }),
+                    Box::new(|b| b.push_vector(b.ip.d.x, b.ip.d.y)),
                     // 12: storage offset
                     Box::new(|b| b.push_vector(0, 0)),
                     // 13: least point
@@ -471,7 +475,7 @@ impl Befunge {
             }
             'z' => { /* nop */ }
             // todo: {
-            '|' => if self.pop() == 0 {self.ip.face(Down)} else {self.ip.face(Up)},
+            '|' => if self.pop() == 0 {self.ip.d = delta::SOUTH } else {self.ip.d = delta::NORTH },
             // todo: }
             '~' => self.state = state::INPUTTING_CHAR,
             _ => if !self.args.ignore { self.ip.turn_reverse() },
