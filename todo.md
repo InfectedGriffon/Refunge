@@ -3,6 +3,8 @@
 - move over to Funge-98 terminology
 - fix up the input system
 - verbose/logging mode to display each action
+- rename data tower back to stack
+- move more things away from states
 
 ## Instructions
 ### Concurrency
@@ -18,4 +20,3 @@
 ### Misc. Unimplemented Funge-98 Instructions
 - `l`: trefunge only, used in Refunge as lehmer code rearrangement
 - `hm`: trefunge only, unused in Refunge
-- `z`: Funge-98's explicit no-op, unused in Refunge
