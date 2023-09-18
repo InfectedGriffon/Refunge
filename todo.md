@@ -3,7 +3,6 @@
 - move over to Funge-98 terminology
 - fix up the input system
 - verbose/logging mode to display each action
-- rename data tower back to stack
 - move more things away from states
 
 ## Instructions

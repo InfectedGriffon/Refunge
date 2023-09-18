@@ -1,6 +1,6 @@
 use std::env::{args, vars};
 use crate::arguments::Arguments;
-use crate::data::FungeData;
+use crate::stack::FungeStack;
 use crate::event::{Event, EventHandler};
 use crate::grid::FungeGrid;
 use crate::input::take_input_parse;
@@ -24,7 +24,7 @@ pub struct Befunge {
     /// ip running around executing commands
     ip: InstructionPointer,
     /// simultaneously a stack and a queue
-    data: FungeData,
+    stack: FungeStack,
     /// output text produced by , and .
     out: String,
 
@@ -81,7 +81,7 @@ impl Befunge {
     pub fn restart(&mut self) {
         self.grid.reset();
         self.ip.reset();
-        self.data.clear();
+        self.stack.reset();
         self.out.clear();
         self.state = state::STARTED;
         self.paused = self.args.paused;
@@ -113,12 +113,12 @@ impl Befunge {
         self.state.inputting_char()
     }
 
-    /// render the grid, data, output, and message
+    /// render the grid, stack, output, and message
     pub fn render(&mut self, f: &mut Frame<CrosstermBackend<Stdout>>) {
         let grid_width = (self.grid.width() as u16+2).clamp(20, 64);
         let grid_height = (self.grid.height() as u16+2).clamp(9, 27);
         let output_height = textwrap::wrap(&self.out, grid_width as usize-2).len() as u16+2;
-        let data_height = (grid_height+output_height).max(self.data.len() as u16+2);
+        let stack_height = (grid_height+output_height).max(self.stack.len() as u16+2);
         let chunks = Layout::new()
             .constraints(vec![Constraint::Length(grid_width),Constraint::Length(8),Constraint::Min(0)])
             .direction(Horizontal)
@@ -127,7 +127,7 @@ impl Befunge {
             .constraints(vec![Constraint::Length(grid_height),Constraint::Length(output_height),Constraint::Min(0)])
             .split(chunks[0]);
         let column_b = Layout::new()
-            .constraints(vec![Constraint::Length(data_height),Constraint::Min(1)])
+            .constraints(vec![Constraint::Length(stack_height),Constraint::Min(1)])
             .split(chunks[1]);
 
         let output = Paragraph::new(self.out.clone())
@@ -138,7 +138,7 @@ impl Befunge {
         f.render_widget(self.grid.render(self.ip.x, self.ip.y).scroll(self.grid_scroll), column_a[0]);
         f.render_widget(output, column_a[1]);
         f.render_widget(self.state.render_message(&self.input).wrap(Wrap{trim:false}), column_a[2]);
-        f.render_widget(self.data.render(), column_b[0]);
+        f.render_widget(self.stack.render(), column_b[0]);
         if self.paused {f.render_widget(Paragraph::new("paused"), column_b[1])}
     }
 
@@ -193,11 +193,11 @@ impl Befunge {
 
     /// get the top number from the stack or first number in the queue
     pub fn pop(&mut self) -> i32 {
-        self.data.pop()
+        self.stack.pop()
     }
     /// get the top value from the stack as a character
     pub fn pop_char(&mut self) -> char {
-        char::from_u32(self.data.pop() as u32).unwrap_or(' ')
+        char::from_u32(self.stack.pop() as u32).unwrap_or(' ')
     }
     /// get a null-terminated string from the stack
     pub fn pop_0gnirts(&mut self) -> String {
@@ -210,7 +210,7 @@ impl Befunge {
     }
     /// push a number onto the top of the stack or end of the queue
     pub fn push(&mut self, n: i32) {
-        self.data.push(n)
+        self.stack.push(n)
     }
     /// push a null-terminated string onto the stack
     pub fn push_0gnirts(&mut self, s: String) {
@@ -370,10 +370,10 @@ impl Befunge {
             }
             'l' => {
                 let n = self.pop();
-                self.data.permute(n as usize);
+                self.stack.permute(n as usize);
             }
             // trefunge only: m
-            'n' => self.data.clear(),
+            'n' => self.stack.clear(),
             'o' => {
                 let filename = self.pop_0gnirts();
                 let _ = self.pop();
@@ -460,7 +460,7 @@ impl Befunge {
                     // 17: size of stack-stack
                     Box::new(|b| b.push(1)),
                     // 18: size of stack
-                    Box::new(|b| b.push(b.data.len() as i32)),
+                    Box::new(|b| b.push(b.stack.len() as i32)),
                     // 19: program arguments as 0gnirts, with another nul at end
                     Box::new(|b| b.push_0gnirts(args().collect::<Vec<String>>().join("\x00") + "\x00")),
                     // 20: env vars as key=val 0nigrts, with another null at end

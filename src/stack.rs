@@ -2,45 +2,42 @@ use std::collections::VecDeque;
 use ratatui::text::Line;
 use ratatui::widgets::{Block, Borders, Paragraph};
 
-#[allow(unused)]
-#[derive(PartialEq, Debug, Default)]
-enum DataMode { #[default] Stack, Queue }
-
 #[derive(Debug, Default)]
-pub struct FungeData {
+pub struct FungeStack {
     inner: VecDeque<i32>,
-    mode: DataMode
+    queue_mode: bool,
+    invert_mode: bool,
 }
-impl FungeData {
-    /// reset and clear all data
+impl FungeStack {
+    /// clear all data
     pub fn clear(&mut self) {
         self.inner.clear();
-        self.mode = Default::default();
     }
-    /// pop a value from the top of the stack / start of the queue
+    /// reset modes and clear data
+    pub fn reset(&mut self) {
+        self.clear();
+        self.queue_mode = false;
+        self.invert_mode = false;
+    }
+    /// pop a value from the stack
     pub fn pop(&mut self) -> i32 {
-        match self.mode {
-            DataMode::Stack => self.inner.pop_back().unwrap_or(0),
-            DataMode::Queue => self.inner.pop_front().unwrap_or(0)
+        if self.queue_mode {
+            self.inner.pop_front().unwrap_or(0)
+        } else {
+            self.inner.pop_back().unwrap_or(0)
         }
     }
-    /// push a value onto top of stack / end of queue
+    /// push a value onto the stack
     pub fn push(&mut self, n: i32) {
-        self.inner.push_back(n)
+        if self.invert_mode {
+            self.inner.push_front(n)
+        } else {
+            self.inner.push_back(n)
+        }
     }
     /// the number of elements stored
     pub fn len(&self) -> usize {
         self.inner.len()
-    }
-    /// first in, last out
-    #[allow(unused)]
-    pub fn stack_mode(&mut self) {
-        self.mode = DataMode::Stack;
-    }
-    /// first in, first out
-    #[allow(unused)]
-    pub fn queue_mode(&mut self) {
-        self.mode = DataMode::Queue;
     }
     /// rearrange data via lehmer codes
     pub fn permute(&mut self, p: usize) {
@@ -50,10 +47,7 @@ impl FungeData {
     }
     /// render to a vertical list, bottom to top
     pub fn render(&self) -> Paragraph {
-        let name = match self.mode {
-            DataMode::Stack => "Stack".to_string(),
-            DataMode::Queue => "Queue".to_string()
-        };
+        let name = if self.queue_mode {"Stack".to_string()} else {"Queue".to_string()};
 
         Paragraph::new(self.inner.iter().rev().map(|n| Line::from(n.to_string())).collect::<Vec<Line>>())
             .block(Block::default().borders(Borders::ALL).title(name))
