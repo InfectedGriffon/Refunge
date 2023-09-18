@@ -23,8 +23,8 @@ pub struct Befunge {
     grid: FungeGrid,
     /// ip running around executing commands
     ip: InstructionPointer,
-    /// simultaneously a stack and a queue
-    stack: FungeStack,
+    /// main data stack
+    stack: FungeStack<i32>,
     /// output text produced by , and .
     out: String,
 
@@ -197,7 +197,7 @@ impl Befunge {
     }
     /// get the top value from the stack as a character
     pub fn pop_char(&mut self) -> char {
-        char::from_u32(self.stack.pop() as u32).unwrap_or(' ')
+        char::from_u32(self.pop() as u32).unwrap_or(' ')
     }
     /// get a null-terminated string from the stack
     pub fn pop_0gnirts(&mut self) -> String {
