@@ -23,8 +23,8 @@ pub struct Befunge {
     grid: FungeGrid,
     /// ip running around executing commands
     ip: InstructionPointer,
-    /// main data stack
-    stack: FungeStack<i32>,
+    /// list of stacks (0th is SOSS, 1st is TOSS)
+    stacks: FungeStack<FungeStack<i32>>,
     /// output text produced by , and .
     out: String,
 
@@ -50,7 +50,8 @@ impl Befunge {
         let paused = args.paused;
         let grid = FungeGrid::new(read_to_string(&args.file).expect("failed to read file"));
         let ip = InstructionPointer::new(0, grid.start_pos(args.script).1);
-        Befunge { grid, ip, paused, args, ..Default::default() }
+        let stacks = vec![FungeStack::default()].into();
+        Befunge { grid, ip, stacks, paused, args, ..Default::default() }
     }
     /// step forward once and run whatever char we're standing on
     pub fn tick(&mut self) {
@@ -81,7 +82,7 @@ impl Befunge {
     pub fn restart(&mut self) {
         self.grid.reset();
         self.ip.reset();
-        self.stack.reset();
+        self.stacks = FungeStack::default();
         self.out.clear();
         self.state = state::STARTED;
         self.paused = self.args.paused;
@@ -118,9 +119,9 @@ impl Befunge {
         let grid_width = (self.grid.width() as u16+2).clamp(20, 64);
         let grid_height = (self.grid.height() as u16+2).clamp(9, 27);
         let output_height = textwrap::wrap(&self.out, grid_width as usize-2).len() as u16+2;
-        let stack_height = (grid_height+output_height).max(self.stack.len() as u16+2);
+        let stack_height = (grid_height+output_height).max(self.stacks[0].len() as u16+2);
         let chunks = Layout::new()
-            .constraints(vec![Constraint::Length(grid_width),Constraint::Length(8),Constraint::Min(0)])
+            .constraints(vec![Constraint::Length(grid_width),Constraint::Length(8),Constraint::Length(8),Constraint::Min(0)])
             .direction(Horizontal)
             .split(f.size());
         let column_a = Layout::new()
@@ -134,11 +135,18 @@ impl Befunge {
             .wrap(Wrap { trim: false })
             .block(Block::default().borders(Borders::ALL).title("Output"))
             .scroll((self.output_scroll, 0));
+        let stack = self.stacks[0].render(if self.stacks.len()>  1 {"TOSS"} else if self.stacks[0].queue_mode {"Queue"} else {"Stack"});
 
         f.render_widget(self.grid.render(self.ip.x, self.ip.y).scroll(self.grid_scroll), column_a[0]);
         f.render_widget(output, column_a[1]);
         f.render_widget(self.state.render_message(&self.input).wrap(Wrap{trim:false}), column_a[2]);
-        f.render_widget(self.stack.render(), column_b[0]);
+        f.render_widget(stack, column_b[0]);
+        if self.stacks.len() > 1 {
+            f.render_widget(
+                self.stacks[1].render("SOSS"),
+                Layout::new().constraints(vec![Constraint::Length(self.stacks[1].len()as u16+2),Constraint::Min(0)]).split(chunks[2])[0]
+            )
+        }
         if self.paused {f.render_widget(Paragraph::new("paused"), column_b[1])}
     }
 
@@ -191,9 +199,9 @@ impl Befunge {
         self.events.slow_down();
     }
 
-    /// get the top number from the stack or first number in the queue
+    /// get the top number from the stack
     pub fn pop(&mut self) -> i32 {
-        self.stack.pop()
+        self.stacks[0].pop()
     }
     /// get the top value from the stack as a character
     pub fn pop_char(&mut self) -> char {
@@ -208,9 +216,9 @@ impl Befunge {
             output.push(char::from_u32(c as u32).unwrap_or(' '));
         };
     }
-    /// push a number onto the top of the stack or end of the queue
+    /// push a number onto the top of the stack
     pub fn push(&mut self, n: i32) {
-        self.stack.push(n)
+        self.stacks[0].push(n)
     }
     /// push a null-terminated string onto the stack
     pub fn push_0gnirts(&mut self, s: String) {
@@ -370,10 +378,10 @@ impl Befunge {
             }
             'l' => {
                 let n = self.pop();
-                self.stack.permute(n as usize);
+                self.stacks[0].permute(n as usize);
             }
             // trefunge only: m
-            'n' => self.stack.clear(),
+            'n' => self.stacks[0].clear(),
             'o' => {
                 let filename = self.pop_0gnirts();
                 let _ = self.pop();
@@ -390,20 +398,16 @@ impl Befunge {
                 // The resulting text file is identical in appearance and takes up less storage space."
             }
             'p' => {
-                let (y, x, c) = (self.pop(), self.pop(), self.pop_char());
+                let (y, x, c) = (self.pop() + self.ip.offset.1, self.pop() + self.ip.offset.0, self.pop_char());
                 if x < 0 || y < 0 { return }
-                if self.args.expand {
-                    self.grid.set_char_or_expand(x as usize, y as usize, c);
-                } else {
-                    self.grid.set_char(x as usize, y as usize, c);
-                }
+                self.grid.set_char(x as usize, y as usize, c, self.args.expand);
             },
             // todo: q
             'r' => self.ip.turn_reverse(),
             's' => {
                 let c = self.pop_char();
                 let (x, y) = self.grid.cell_ahead_ip(self.ip);
-                self.grid.set_char(x, y, c);
+                self.grid.set_char(x, y, c, false);
             },
             // todo: t
             // todo: u
@@ -448,7 +452,7 @@ impl Befunge {
                     // 11: delta
                     Box::new(|b| b.push_vector(b.ip.d.x, b.ip.d.y)),
                     // 12: storage offset
-                    Box::new(|b| b.push_vector(0, 0)),
+                    Box::new(|b| b.push_vector(b.ip.offset.0, b.ip.offset.1)),
                     // 13: least point
                     Box::new(|b| b.push_vector(0, 0)),
                     // 14: greatest point
@@ -458,9 +462,9 @@ impl Befunge {
                     // 16: (hour * 256 * 256) + (minute * 256) + (second)
                     Box::new(|b| { let now = chrono::Utc::now(); b.push(now.hour() as i32*256*256 + now.minute() as i32*256 + now.second() as i32) }),
                     // 17: size of stack-stack
-                    Box::new(|b| b.push(1)),
+                    Box::new(|b| b.push(self.stacks.len() as i32)),
                     // 18: size of stack
-                    Box::new(|b| b.push(b.stack.len() as i32)),
+                    Box::new(|b| b.push(b.stacks[0].len() as i32)),
                     // 19: program arguments as 0gnirts, with another nul at end
                     Box::new(|b| b.push_0gnirts(args().collect::<Vec<String>>().join("\x00") + "\x00")),
                     // 20: env vars as key=val 0nigrts, with another null at end
@@ -474,9 +478,36 @@ impl Befunge {
                 }
             }
             'z' => { /* nop */ }
-            // todo: {
+            '{' => {
+                let n = self.pop();
+                self.stacks.push_front(FungeStack::default());
+                match n.signum() {
+                    1 => {
+                        let elems: Vec<i32> = (0..n).map(|_|self.stacks[1].pop()).collect();
+                        for val in elems.iter().rev() { self.push(*val) }
+                    }
+                    -1 => for _ in 0..n.abs() { self.stacks[1].push(0) },
+                    _ => {}
+                }
+                self.stacks[1].push(self.ip.offset.0);
+                self.stacks[1].push(self.ip.offset.1);
+                self.ip.offset = (self.ip.x as i32 + self.ip.d.x, self.ip.y as i32 + self.ip.d.y);
+            }
             '|' => if self.pop() == 0 {self.ip.d = delta::SOUTH } else {self.ip.d = delta::NORTH },
-            // todo: }
+            '}' => {
+                if self.stacks.len() == 1 { return self.ip.turn_reverse(); }
+                let n = self.pop();
+                (self.ip.offset.1, self.ip.offset.0) = (self.stacks[1].pop(), self.stacks[1].pop());
+                match n.signum() {
+                    1 => {
+                        let elems: Vec<i32> = (0..n).map(|_|self.pop()).collect();
+                        for val in elems.iter().rev() { self.stacks[1].push(*val) }
+                    }
+                    -1 => for _ in 0..n.abs() { self.stacks[1].pop() },
+                    _ => {}
+                }
+                self.stacks.pop_front();
+            }
             '~' => self.state = state::INPUTTING_CHAR,
             _ => if !self.args.ignore { self.ip.turn_reverse() },
         }

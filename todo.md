@@ -4,6 +4,7 @@
 - fix up the input system
 - verbose/logging mode to display each action
 - move more things away from states
+- decrease heights of output and grid boxes
 
 ## Instructions
 ### Concurrency

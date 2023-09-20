@@ -6,7 +6,7 @@ pub struct InstructionPointer {
     pub x: usize,
     pub y: usize,
     pub d: Delta,
-
+    pub offset: (i32, i32),
     original: (usize, usize),
 }
 impl InstructionPointer {
