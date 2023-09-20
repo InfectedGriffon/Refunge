@@ -44,6 +44,7 @@ impl FungeGrid {
             for c in &line[left..=right] {
                 output.push(*c);
             }
+            output.push('\n');
         }
         output
     }
@@ -65,32 +66,30 @@ impl FungeGrid {
     }
 
     /// set a character in the grid, panics if outside the grid area
-    pub fn set_char(&mut self, x: usize, y: usize, c: char) {
+    pub fn set_char(&mut self, x: usize, y: usize, c: char, expand: bool) {
         if x < self.width && y < self.height {
+            self.chars[y][x] = c;
+        } else if expand {
+            while x >= self.width {
+                for row in &mut self.chars {
+                    (*row).push(' ');
+                }
+                self.width += 1;
+            }
+            while y >= self.height {
+                self.chars.push(vec![' '; self.width]);
+                self.height += 1;
+            }
             self.chars[y][x] = c;
         } else {
             panic!("trying to access area outside of grid")
         }
     }
-    /// set a character in the grid, expanding the grid area if needed
-    pub fn set_char_or_expand(&mut self, x: usize, y: usize, c: char) {
-        while x >= self.width {
-            for row in &mut self.chars {
-                (*row).push(' ');
-            }
-            self.width += 1;
-        }
-        while y >= self.height {
-            self.chars.push(vec![' '; self.width]);
-            self.height += 1;
-        }
-        self.chars[y][x] = c;
-    }
     /// place some text within the grid
     pub fn place(&mut self, text: String, x: usize, y: usize) {
         for (m, line) in text.lines().enumerate() {
             for (n, c) in line.chars().enumerate() {
-                self.set_char_or_expand(x+n, y+m, c);
+                self.set_char(x+n, y+m, c, true);
             }
         }
     }
