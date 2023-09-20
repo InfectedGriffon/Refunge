@@ -410,7 +410,25 @@ impl Befunge {
                 self.grid.set_char(x, y, c, false);
             },
             // todo: t
-            // todo: u
+            'u' => {
+                if self.stacks.len() == 1 { return self.ip.turn_reverse() }
+                let count = self.pop();
+                match count.signum() {
+                    1 => {
+                        for _ in 0..count {
+                            let elem = self.stacks[1].pop();
+                            self.push(elem);
+                        }
+                    }
+                    -1 => {
+                        for _ in 0..count.abs() {
+                            let elem = self.pop();
+                            self.stacks[1].push(elem);
+                        }
+                    }
+                    _ => {}
+                }
+            }
             'v' => self.ip.d = delta::SOUTH,
             'w' => {
                 let (b, a) = (self.pop(), self.pop());
@@ -462,7 +480,7 @@ impl Befunge {
                     // 16: (hour * 256 * 256) + (minute * 256) + (second)
                     Box::new(|b| { let now = chrono::Utc::now(); b.push(now.hour() as i32*256*256 + now.minute() as i32*256 + now.second() as i32) }),
                     // 17: size of stack-stack
-                    Box::new(|b| b.push(self.stacks.len() as i32)),
+                    Box::new(|b| b.push(b.stacks.len() as i32)),
                     // 18: size of stack
                     Box::new(|b| b.push(b.stacks[0].len() as i32)),
                     // 19: program arguments as 0gnirts, with another nul at end
@@ -503,7 +521,7 @@ impl Befunge {
                         let elems: Vec<i32> = (0..n).map(|_|self.pop()).collect();
                         for val in elems.iter().rev() { self.stacks[1].push(*val) }
                     }
-                    -1 => for _ in 0..n.abs() { self.stacks[1].pop() },
+                    -1 => for _ in 0..n.abs() { self.stacks[1].pop(); },
                     _ => {}
                 }
                 self.stacks.pop_front();
