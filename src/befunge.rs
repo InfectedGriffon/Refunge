@@ -449,12 +449,12 @@ impl Befunge {
                 let info: Vec<Box<fn(&mut Befunge)>> = vec![
                     // 1: flags getch, =, o, i, no t
                     Box::new(|b| b.push(0b11110)),
-                    // 2: bytes per cell (i32 = 32 bits = 4 bytes)
-                    Box::new(|b| b.push(4)),
+                    // 2: bytes per cell
+                    Box::new(|b| b.push(std::mem::size_of::<i32>() as i32)),
                     // 3: handprint
                     Box::new(|b| b.push(hexify("RFNG"))),
                     // 4: version number
-                    Box::new(|b| b.push(021)),
+                    Box::new(|b| b.push(env!("CARGO_PKG_VERSION").replace(".","").parse().unwrap())),
                     // 5: how does "=" work
                     Box::new(|b| b.push(1)),
                     // 6: path separator
