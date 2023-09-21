@@ -480,7 +480,7 @@ impl Befunge {
                     // 13: least point
                     Box::new(|b| b.push_vector(0, 0)),
                     // 14: greatest point
-                    Box::new(|b| b.push_vector(b.grid.width() as i32, b.grid.height() as i32)),
+                    Box::new(|b| b.push_vector(b.grid.width() as i32, b.grid.height() as i32+1)),
                     // 15: ((year - 1900) * 256 * 256) + (month * 256) + (day of month)
                     Box::new(|b| { let now = chrono::Utc::now(); b.push(((now.year()-1900)*256*256) + (now.month() as i32*256) + now.day() as i32) }),
                     // 16: (hour * 256 * 256) + (minute * 256) + (second)
