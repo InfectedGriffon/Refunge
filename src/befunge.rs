@@ -116,8 +116,8 @@ impl Befunge {
 
     /// render the grid, stack, output, and message
     pub fn render(&mut self, f: &mut Frame<CrosstermBackend<Stdout>>) {
-        let grid_width = (self.grid.width() as u16+2).clamp(20, 64);
-        let grid_height = (self.grid.height() as u16+2).clamp(9, 27);
+        let grid_width = (self.grid.width() as u16+2).clamp(20, 80);
+        let grid_height = (self.grid.height() as u16+2).clamp(9, 25);
         let output_height = textwrap::wrap(&self.out, grid_width as usize-2).len() as u16+2;
         let stack_height = (grid_height+output_height).max(self.stacks[0].len() as u16+2);
         let chunks = Layout::new()
