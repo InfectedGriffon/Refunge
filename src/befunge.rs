@@ -82,7 +82,7 @@ impl Befunge {
     pub fn restart(&mut self) {
         self.grid.reset();
         self.ip.reset();
-        self.stacks = FungeStack::default();
+        self.stacks = vec![FungeStack::default()].into();
         self.out.clear();
         self.state = state::STARTED;
         self.paused = self.args.paused;
