@@ -222,8 +222,8 @@ impl Befunge {
     }
     /// push a null-terminated string onto the stack
     pub fn push_0gnirts(&mut self, s: String) {
-        s.chars().rev().for_each(|c| self.push(c as i32));
         self.push(0);
+        s.chars().rev().for_each(|c| self.push(c as i32));
     }
     // push a 2d coordinate onto the stack
     pub fn push_vector(&mut self, x: i32, y: i32) {
@@ -484,9 +484,9 @@ impl Befunge {
                     // 18: size of stack
                     Box::new(|b| b.push(b.stacks[0].len() as i32)),
                     // 19: program arguments as 0gnirts, with another nul at end
-                    Box::new(|b| b.push_0gnirts(args().collect::<Vec<String>>().join("\x00") + "\x00")),
+                    Box::new(|b| b.push_0gnirts(args().collect::<Vec<String>>().join("\x00") + "\x00\x00")),
                     // 20: env vars as key=val 0nigrts, with another null at end
-                    Box::new(|b| b.push_0gnirts(vars().map(|(k,v)|format!("{k}={v}")).collect::<Vec<String>>().join("\x00") + "\x00")),
+                    Box::new(|b| b.push_0gnirts(vars().map(|(k,v)|format!("{k}={v}")).collect::<Vec<String>>().join("\x00") + "\x00\x00")),
                 ];
 
                 match n {
