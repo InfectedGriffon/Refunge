@@ -26,6 +26,10 @@ pub struct Arguments {
     #[arg(short, long = "max")]
     pub max_ticks: Option<u32>,
 
+    /// immediately jump to this many ticks into the sim
+    #[arg(short, long)]
+    pub jump: Option<u32>,
+
     /// Target file
     pub file: String
 }

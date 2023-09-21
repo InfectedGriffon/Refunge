@@ -52,7 +52,12 @@ fn main() -> Result<()> {
     enable_raw_mode()?;
     execute!(stdout(), EnterAlternateScreen)?;
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
+    let jump_ticks = args.jump;
     let mut befunge = Befunge::new(args);
+
+    if let Some(n) = jump_ticks {
+        for _ in 0..n { befunge.tick() }
+    }
 
     loop {
         terminal.draw(|f| befunge.render(f))?;
