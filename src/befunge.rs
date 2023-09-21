@@ -413,6 +413,7 @@ impl Befunge {
                 let c = self.pop_char();
                 let (x, y) = self.grid.cell_ahead_ip(self.ip);
                 self.grid.set_char(x, y, c, false);
+                self.walk();
             },
             // todo: t
             'u' => {
