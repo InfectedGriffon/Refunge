@@ -263,7 +263,12 @@ impl Befunge {
                 if x == 0 {self.push(0)} else {self.push(y % x)}
             }
             '&' => self.state = state::INPUTTING_NUM,
-            '\'' => self.state = state::CHAR_FETCH,
+            '\'' => {
+                let (x, y) = self.grid.cell_ahead_ip(self.ip);
+                let c = self.grid.char_at(x, y);
+                self.push(c as i32);
+                self.walk();
+            }
             // todo: (
             // todo: )
             '*' => {

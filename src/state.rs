@@ -41,7 +41,6 @@ impl FungeState {
     pub fn is_over(&self, c: char) -> bool {
         match self.ends_at {
             Instant => true,
-            Ticks(n) => self.ticks == n as u32,
             Char(target) => self.ticks > 0 && c == target,
             Manual | Never => false,
         }
@@ -59,8 +58,6 @@ impl Default for FungeState { fn default() -> Self { STARTED } }
 enum EndAt {
     /// single action
     Instant,
-    /// last some amount of time
-    Ticks(u8),
     /// last until reaching another character
     Char(char),
     /// deactivated by some other event
@@ -83,6 +80,5 @@ pub const RUNNING: FungeState = FungeState::of(Never, true, Instruction);
 pub const ENDED: FungeState = FungeState::of_message(Never, false, Nothing, "sim ended.\npress r to restart, or q to exit.");
 
 pub const STRING_MODE: FungeState = FungeState::of_message(Char('"'), true, StringPush, "(string mode)");
-pub const CHAR_FETCH: FungeState = FungeState::of_message(Ticks(1), true, StringPush, "(string mode)");
 pub const INPUTTING_CHAR: FungeState = FungeState::of_message(Manual, false, Nothing, "input char:");
 pub const INPUTTING_NUM: FungeState = FungeState::of_message(Manual, false, Nothing, "input num:");
