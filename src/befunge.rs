@@ -15,7 +15,8 @@ use std::fs::{File, read_to_string};
 use std::io::{Stdout, Write};
 use std::process::Command;
 use chrono::{Datelike, Timelike};
-use crate::delta;
+use crate::vector;
+use crate::vector::FungeVector;
 
 #[derive(Default)]
 pub struct Befunge {
@@ -49,7 +50,7 @@ impl Befunge {
     pub fn new(args: Arguments) -> Befunge {
         let paused = args.paused;
         let grid = FungeGrid::new(read_to_string(&args.file).expect("failed to read file"));
-        let ip = InstructionPointer::new(0, grid.start_pos(args.script).1);
+        let ip = InstructionPointer::new(grid.start_pos(args.script));
         let stacks = vec![FungeStack::default()].into();
         Befunge { grid, ip, stacks, paused, args, ..Default::default() }
     }
@@ -137,7 +138,7 @@ impl Befunge {
             .scroll((self.output_scroll, 0));
         let stack = self.stacks[0].render(if self.stacks.len()>  1 {"TOSS"} else if self.stacks[0].queue_mode {"Queue"} else {"Stack"});
 
-        f.render_widget(self.grid.render(self.ip.x, self.ip.y).scroll(self.grid_scroll), column_a[0]);
+        f.render_widget(self.grid.render(self.ip.pos).scroll(self.grid_scroll), column_a[0]);
         f.render_widget(output, column_a[1]);
         f.render_widget(self.state.render_message(&self.input).wrap(Wrap{trim:false}), column_a[2]);
         f.render_widget(stack, column_b[0]);
@@ -216,6 +217,11 @@ impl Befunge {
             output.push(char::from_u32(c as u32).unwrap_or(' '));
         };
     }
+    /// pop a vector off of the stack in the order y, x
+    pub fn pop_vector(&mut self) -> FungeVector {
+        let (y, x) = (self.pop(), self.pop());
+        FungeVector(x, y)
+    }
     /// push a number onto the top of the stack
     pub fn push(&mut self, n: i32) {
         self.stacks[0].push(n)
@@ -226,9 +232,9 @@ impl Befunge {
         s.chars().rev().for_each(|c| self.push(c as i32));
     }
     // push a 2d coordinate onto the stack
-    pub fn push_vector(&mut self, x: i32, y: i32) {
-        self.push(x);
-        self.push(y);
+    pub fn push_vector(&mut self, pos: FungeVector) {
+        self.push(pos.0);
+        self.push(pos.1);
     }
 
     /// walk the current ip forward by a space
@@ -241,7 +247,7 @@ impl Befunge {
     }
     /// character under the current ip
     pub fn current_char(&self) -> char {
-        self.grid.char_at(self.ip.x, self.ip.y)
+        self.grid.char_at(self.ip.pos)
     }
 
     /// run the instruction from a given character
@@ -264,8 +270,7 @@ impl Befunge {
             }
             '&' => self.state = state::INPUTTING_NUM,
             '\'' => {
-                let (x, y) = self.grid.cell_ahead_ip(self.ip);
-                let c = self.grid.char_at(x, y);
+                let c = self.grid.char_at(self.grid.cell_ahead_ip(self.ip));
                 self.push(c as i32);
                 self.walk();
             }
@@ -322,7 +327,7 @@ impl Befunge {
                 self.walk(); // move off of current semicolon
                 while self.current_char() != ';' {self.walk()}
             },
-            '<' => self.ip.d = delta::EAST,
+            '<' => self.ip.delta = vector::WEST,
             '=' => {
                 let cmd = self.pop_0gnirts();
                 self.push(Command::new("cmd.exe")
@@ -332,15 +337,15 @@ impl Befunge {
                     .code()
                     .unwrap_or_default());
             }
-            '>' => self.ip.d = delta::WEST,
-            '?' => self.ip.d = rand::random(),
+            '>' => self.ip.delta = vector::EAST,
+            '?' => self.ip.delta = rand::random(),
             '@' => self.state = state::ENDED,
             // A-Z => todo
-            '[' => self.ip.turn_left(),
-            '\\' => { let (x, y) = (self.pop(), self.pop()); self.push_vector(x, y) }
-            ']' => self.ip.turn_right(),
-            '^' => self.ip.d = delta::NORTH,
-            '_' => if self.pop() == 0 {self.ip.d = delta::WEST } else {self.ip.d = delta::EAST },
+            '[' => self.ip.delta.turn_left(),
+            '\\' => { let pos = FungeVector(self.pop(), self.pop()); self.push_vector(pos) }
+            ']' => self.ip.delta.turn_right(),
+            '^' => self.ip.delta = vector::NORTH,
+            '_' => if self.pop() == 0 {self.ip.delta = vector::EAST } else {self.ip.delta = vector::WEST },
             '`' => {
                 let (x, y) = (self.pop(), self.pop());
                 self.push(if y > x {1} else {0})
@@ -353,8 +358,7 @@ impl Befunge {
             'f' => self.push(15),
             'g' => {
                 let (y, x) = (self.pop(), self.pop());
-                if x < 0 || y < 0 { return }
-                let c = self.grid.char_at(x as usize, y as usize);
+                let c = self.grid.char_at(FungeVector(x, y));
                 self.push(c as i32)
             },
             // trefunge only: h
@@ -378,7 +382,7 @@ impl Befunge {
                 let n = self.pop();
                 if n == 0 {return self.walk()}
 
-                let c = self.grid.runnable_char_ahead(self.ip.x, self.ip.y, self.ip.d);
+                let c = self.grid.runnable_char_ahead(self.ip.pos, self.ip.delta);
                 for _ in 0..n { self.command(c) }
             }
             'l' => {
@@ -390,11 +394,11 @@ impl Befunge {
             'o' => {
                 let filename = self.pop_0gnirts();
                 let _ = self.pop();
-                let (y_a, x_a) = (self.pop() as usize, self.pop() as usize);
-                let (y_b, x_b) = (self.pop() as usize, self.pop() as usize);
-                let content = self.grid.read_from(x_a, y_a, x_b, y_b);
+                let start = self.pop_vector();
+                let end = self.pop_vector();
+                let content = self.grid.read_from(start, end);
                 if let Ok(mut file) = File::open(filename) {
-                    write!(file, "{content}").unwrap_or_else(|_| self.ip.turn_reverse());
+                    write!(file, "{content}").unwrap_or_else(|_| self.ip.delta.invert());
                 }
                 // TODO DEAL WITH FLAG
                 // "if the least significant bit of the flags cell is high,
@@ -403,21 +407,21 @@ impl Befunge {
                 // The resulting text file is identical in appearance and takes up less storage space."
             }
             'p' => {
-                let (y, x, c) = (self.pop() + self.ip.offset.1, self.pop() + self.ip.offset.0, self.pop_char());
-                if x < 0 || y < 0 { return }
-                self.grid.set_char(x as usize, y as usize, c, self.args.expand);
+                let pos = self.pop_vector();
+                let c = self.pop_char();
+                self.grid.set_char(pos + self.ip.offset, c, self.args.expand);
             },
             // todo: q
-            'r' => self.ip.turn_reverse(),
+            'r' => self.ip.delta.invert(),
             's' => {
                 let c = self.pop_char();
-                let (x, y) = self.grid.cell_ahead_ip(self.ip);
-                self.grid.set_char(x, y, c, false);
+                let pos = self.grid.cell_ahead_ip(self.ip);
+                self.grid.set_char(pos, c, false);
                 self.walk();
             },
             // todo: t
             'u' => {
-                if self.stacks.len() == 1 { return self.ip.turn_reverse() }
+                if self.stacks.len() == 1 { return self.ip.delta.invert() }
                 let count = self.pop();
                 match count.signum() {
                     1 => {
@@ -435,20 +439,16 @@ impl Befunge {
                     _ => {}
                 }
             }
-            'v' => self.ip.d = delta::SOUTH,
+            'v' => self.ip.delta = vector::SOUTH,
             'w' => {
                 let (b, a) = (self.pop(), self.pop());
                 if a < b {
-                    self.ip.turn_left()
+                    self.ip.delta.turn_left()
                 } else if a > b {
-                    self.ip.turn_right()
+                    self.ip.delta.turn_right()
                 };
             }
-            'x' => {
-                let (y, x) = (self.pop(), self.pop());
-                self.ip.d.x = x;
-                self.ip.d.y = y;
-            }
+            'x' => self.ip.delta = self.pop_vector(),
             'y' => {
                 let n = self.pop();
 
@@ -472,15 +472,15 @@ impl Befunge {
                     // 9: team number
                     Box::new(|b| b.push(0)),
                     // 10: pos
-                    Box::new(|b| b.push_vector(b.ip.x as i32, b.ip.y as i32)),
+                    Box::new(|b| b.push_vector(b.ip.pos)),
                     // 11: delta
-                    Box::new(|b| b.push_vector(b.ip.d.x, b.ip.d.y)),
+                    Box::new(|b| b.push_vector(b.ip.delta)),
                     // 12: storage offset
-                    Box::new(|b| b.push_vector(b.ip.offset.0, b.ip.offset.1)),
+                    Box::new(|b| b.push_vector(b.ip.offset)),
                     // 13: least point
-                    Box::new(|b| b.push_vector(0, 0)),
+                    Box::new(|b| b.push_vector(vector::ORIGIN)),
                     // 14: greatest point
-                    Box::new(|b| b.push_vector(b.grid.width() as i32, b.grid.height() as i32+1)),
+                    Box::new(|b| b.push_vector(FungeVector(b.grid.width() as i32, b.grid.height() as i32+1))),
                     // 15: ((year - 1900) * 256 * 256) + (month * 256) + (day of month)
                     Box::new(|b| { let now = chrono::Utc::now(); b.push(((now.year()-1900)*256*256) + (now.month() as i32*256) + now.day() as i32) }),
                     // 16: (hour * 256 * 256) + (minute * 256) + (second)
@@ -515,11 +515,11 @@ impl Befunge {
                 }
                 self.stacks[1].push(self.ip.offset.0);
                 self.stacks[1].push(self.ip.offset.1);
-                self.ip.offset = (self.ip.x as i32 + self.ip.d.x, self.ip.y as i32 + self.ip.d.y);
+                self.ip.offset = self.ip.pos + self.ip.delta;
             }
-            '|' => if self.pop() == 0 {self.ip.d = delta::SOUTH } else {self.ip.d = delta::NORTH },
+            '|' => if self.pop() == 0 {self.ip.delta = vector::SOUTH } else {self.ip.delta = vector::NORTH },
             '}' => {
-                if self.stacks.len() == 1 { return self.ip.turn_reverse(); }
+                if self.stacks.len() == 1 { return self.ip.delta.invert() }
                 let n = self.pop();
                 (self.ip.offset.1, self.ip.offset.0) = (self.stacks[1].pop(), self.stacks[1].pop());
                 match n.signum() {
@@ -533,7 +533,7 @@ impl Befunge {
                 self.stacks.pop_front();
             }
             '~' => self.state = state::INPUTTING_CHAR,
-            _ => if !self.args.ignore { self.ip.turn_reverse() },
+            _ => if !self.args.ignore { self.ip.delta.invert() },
         }
     }
 }

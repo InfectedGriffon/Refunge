@@ -1,7 +1,7 @@
 use ratatui::prelude::{Line, Modifier, Span, Style};
 use ratatui::widgets::{Block, Borders, Paragraph};
-use crate::delta::Delta;
 use crate::pointer::InstructionPointer;
+use crate::vector::FungeVector;
 
 /// 2d array with toroidal looping
 #[derive(Debug, Default, Clone)]
@@ -27,17 +27,20 @@ impl FungeGrid {
         self.height = self.og_chars.len();
     }
     /// find the top left corner, possibly lower if script mode + hashtag-started lines
-    pub fn start_pos(&self, script_mode: bool) -> (usize, usize) {
-        let y = if script_mode { self.chars.iter().position(|line| line.get(0) != Some(&'#')).unwrap_or(0) } else { 0 };
-        (0, y)
+    pub fn start_pos(&self, script_mode: bool) -> FungeVector {
+        let y = if script_mode { self.chars.iter().position(|line| line.get(0) != Some(&'#')).unwrap_or(0) as i32 } else { 0 };
+        FungeVector(0, y)
     }
 
     /// find what character is at (x, y) in the grid
-    pub fn char_at(&self, x: usize, y: usize) -> char {
-        self.chars[y][x]
+    pub fn char_at(&self, pos: FungeVector) -> char {
+        if pos.is_negative() { return ' ' }
+        self.chars[pos.1 as usize][pos.0 as usize]
     }
     /// copy an area of the grid into a string with line breaks
-    pub fn read_from(&self, left: usize, top: usize, right: usize, bottom: usize) -> String {
+    pub fn read_from(&self, start: FungeVector, end: FungeVector) -> String {
+        if start.is_negative() || end.is_negative() {return String::new()}
+        let (left, right, top, bottom) = (start.0 as usize, end.0 as usize, start.1 as usize, end.1 as usize);
         if right >= self.width || bottom >= self.height {return String::new()}
         let mut output = String::new();
         for line in &self.chars[top..=bottom] {
@@ -49,24 +52,28 @@ impl FungeGrid {
         output
     }
     /// find the position ahead of an ip in the current direction, including looping
-    pub fn cell_ahead_ip(&self, ip: InstructionPointer) -> (usize, usize) {
-        (
-            (ip.x as i32 + ip.d.x).rem_euclid(self.width as i32) as usize,
-            (ip.y as i32 + ip.d.y).rem_euclid(self.height as i32) as usize
+    pub fn cell_ahead_ip(&self, ip: InstructionPointer) -> FungeVector {
+        FungeVector(
+            (ip.pos.0 + ip.delta.0).rem_euclid(self.width as i32),
+            (ip.pos.1 + ip.delta.1).rem_euclid(self.height as i32)
         )
     }
     /// find the next runnable character ahead of a location
-    pub fn runnable_char_ahead(&self, x: usize, y: usize, d: Delta) -> char {
-        let x2 = (x as i32 + d.x).rem_euclid(self.width as i32) as usize;
-        let y2 = (y as i32 + d.y).rem_euclid(self.height as i32) as usize;
-        match self.chars[y2][x2] {
-            ' '|';' => self.runnable_char_ahead(x2, y2, d),
+    pub fn runnable_char_ahead(&self, pos: FungeVector, delta: FungeVector) -> char {
+        let pos2 = FungeVector(
+            (pos.0 + delta.0).rem_euclid(self.width as i32),
+            (pos.1 + delta.1).rem_euclid(self.height as i32)
+        );
+        match self.chars[pos2.1 as usize][pos2.0 as usize] {
+            ' '|';' => self.runnable_char_ahead(pos2, delta),
             c => c
         }
     }
 
     /// set a character in the grid, panics if outside the grid area
-    pub fn set_char(&mut self, x: usize, y: usize, c: char, expand: bool) {
+    pub fn set_char(&mut self, pos: FungeVector, c: char, expand: bool) {
+        if pos.is_negative() { return }
+        let (x, y) = (pos.0 as usize, pos.1 as usize);
         if x < self.width && y < self.height {
             self.chars[y][x] = c;
         } else if expand {
@@ -89,7 +96,7 @@ impl FungeGrid {
     pub fn place(&mut self, text: String, x: usize, y: usize) {
         for (m, line) in text.lines().enumerate() {
             for (n, c) in line.chars().enumerate() {
-                self.set_char(x+n, y+m, c, true);
+                self.set_char(FungeVector((x+n) as i32, (y+m) as i32), c, true);
             }
         }
     }
@@ -100,12 +107,12 @@ impl FungeGrid {
     pub fn height(&self) -> usize {self.height}
 
     /// render the grid into a paragraph, styling a selected spot bold
-    pub fn render(&self, hx: usize, hy: usize) -> Paragraph {
+    pub fn render(&self, sel: FungeVector) -> Paragraph {
         Paragraph::new(
             self.chars.iter().enumerate().map(|(y, r)| {
-                if y == hy {
+                if y as i32 == sel.1 {
                     Line::from(r.iter().enumerate().map(|(x, c)| {
-                        if x == hx {
+                        if x as i32 == sel.0 {
                             Span::styled(c.to_string(), Style::default()
                                 .add_modifier(Modifier::BOLD)
                                 .add_modifier(Modifier::UNDERLINED))
