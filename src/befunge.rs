@@ -13,6 +13,7 @@ use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
 use ratatui::Frame;
 use std::fs::{File, read_to_string};
 use std::io::{Stdout, Write};
+use std::path::Path;
 use std::process::Command;
 use chrono::{Datelike, Timelike};
 use crate::vector;
@@ -363,12 +364,15 @@ impl Befunge {
             },
             // trefunge only: h
             'i' => {
-                let s = self.pop_0gnirts();
-                let flag = self.pop(); // just the one flag
-                let (y, x) = (self.pop() as usize, self.pop() as usize);
-                let mut text = read_to_string(s).unwrap_or_default();
-                if flag & 1 == 1 {text.retain(|c| !['\r','\n'].contains(&c))};
-                self.grid.place(text, x, y);
+                let filename = self.pop_0gnirts();
+                let flags = self.pop();
+                let pos = self.pop_vector();
+                if !Path::new(&filename).exists() {
+                    self.ip.delta.invert()
+                } else {
+                    let text = read_to_string(filename).unwrap_or_default();
+                    self.grid.place(text, pos, flags & 1 != 0);
+                }
             }
             'j' => {
                 let n = self.pop();
@@ -393,18 +397,22 @@ impl Befunge {
             'n' => self.stacks[0].clear(),
             'o' => {
                 let filename = self.pop_0gnirts();
-                let _ = self.pop();
-                let start = self.pop_vector();
-                let end = self.pop_vector();
-                let content = self.grid.read_from(start, end);
-                if let Ok(mut file) = File::open(filename) {
-                    write!(file, "{content}").unwrap_or_else(|_| self.ip.delta.invert());
+                let path = Path::new(&filename);
+                let flags = self.pop();
+                let v_a = self.pop_vector();
+                let v_b = self.pop_vector();
+                let mut text = self.grid.read_from(v_a, v_b);
+                if flags & 1 != 0 {
+                    text = text.lines().map(|l| l.strip_suffix("\r\n").or(l.strip_suffix("\n")).unwrap_or(l)).collect();
+                    text = text.trim_end().to_string();
                 }
-                // TODO DEAL WITH FLAG
-                // "if the least significant bit of the flags cell is high,
-                // `o` treats the file as a linear text file;
-                // that is, any spaces before each EOL, and any EOLs before the EOF, are not written out.
-                // The resulting text file is identical in appearance and takes up less storage space."
+                if path.exists() && !path.metadata().unwrap().permissions().readonly() {
+                    File::open(path).unwrap().write_all(text.as_bytes()).unwrap();
+                } else if !path.exists() {
+                    File::create(path).unwrap().write_all(text.as_bytes()).unwrap();
+                } else {
+                    self.ip.delta.invert();
+                }
             }
             'p' => {
                 let pos = self.pop_vector();

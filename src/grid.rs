@@ -93,10 +93,16 @@ impl FungeGrid {
         }
     }
     /// place some text within the grid
-    pub fn place(&mut self, text: String, x: usize, y: usize) {
-        for (m, line) in text.lines().enumerate() {
-            for (n, c) in line.chars().enumerate() {
-                self.set_char(FungeVector((x+n) as i32, (y+m) as i32), c, true);
+    pub fn place(&mut self, text: String, pos: FungeVector, binary: bool) {
+        if binary {
+            for (n, c) in text.chars().enumerate() {
+                self.set_char(pos + FungeVector(n as i32, 0), c, true);
+            }
+        } else {
+            for (y, line) in text.lines().enumerate() {
+                for (x, c) in line.chars().enumerate() {
+                    self.set_char(pos + FungeVector(x as i32, y as i32), c, true);
+                }
             }
         }
     }
