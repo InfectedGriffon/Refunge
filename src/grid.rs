@@ -112,12 +112,13 @@ impl FungeGrid {
             self.chars.iter().enumerate().map(|(y, r)| {
                 if y as i32 == sel.1 {
                     Line::from(r.iter().enumerate().map(|(x, c)| {
+                        let symbolize_escapes = |c:&char|if c.is_control(){char::from_u32(*c as u32+0x2400).unwrap().to_string()}else{c.to_string()};
                         if x as i32 == sel.0 {
-                            Span::styled(c.to_string(), Style::default()
+                            Span::styled(symbolize_escapes(c), Style::default()
                                 .add_modifier(Modifier::BOLD)
                                 .add_modifier(Modifier::UNDERLINED))
                         } else {
-                            Span::raw(c.to_string())
+                            Span::raw(symbolize_escapes(c))
                         }
                     }).collect::<Vec<Span>>())
                 } else {

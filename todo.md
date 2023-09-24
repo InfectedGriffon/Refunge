@@ -5,6 +5,7 @@
 - verbose/logging mode to display each action
 - move more things away from states
 - decrease heights of output and grid boxes
+- push every stack's size
 
 ## Instructions
 ### Concurrency

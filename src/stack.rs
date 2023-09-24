@@ -44,6 +44,7 @@ impl<T: Copy + Clone> FungeStack<T>
         self.inner = perm.iter().map(|idx| og[*idx as usize]).collect();
     }
 }
+
 impl<T: Display> FungeStack<T> {
     /// render to a vertical list, bottom to top
     pub fn render(&self, title: impl Into<String>) -> Paragraph {
@@ -51,7 +52,6 @@ impl<T: Display> FungeStack<T> {
             .block(Block::default().borders(Borders::ALL).title(title.into()))
     }
 }
-
 impl<T: Debug> Debug for FungeStack<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_list().entries(&self.inner).finish()
