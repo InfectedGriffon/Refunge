@@ -69,8 +69,8 @@ impl Befunge {
             if ip.first_tick {ip.first_tick = false}
         }
         match self.events.next() {
-            Some(Event::Spawn(ip)) => self.spawn_ip(ip),
-            Some(Event::Kill) => self.kill(),
+            Some(Event::Spawn(ip)) => self.ip_list.push_front(ip),
+            Some(Event::Kill) => for ip in self.ip_list.iter_mut() { ip.dead = true },
             None => {}
         }
     }
@@ -81,49 +81,33 @@ impl Befunge {
         self.out.clear();
         self.paused = self.args.paused;
     }
-    /// pause/unpause the sim
-    pub fn pause(&mut self) {
-        self.paused = !self.paused;
-    }
-    /// stop the program
-    pub fn kill(&mut self) {
-        for ip in self.ip_list.iter_mut() { ip.dead = true }
-    }
-    /// spawn a new instruction pointer
-    pub fn spawn_ip(&mut self, ip: InstructionPointer) {
-        self.ip_list.push_front(ip);
-    }
 
+    /// is there a tick available
     pub fn has_tick(&self) -> bool {
         self.ticks.has_tick()
     }
-
-    pub fn handle_key_events(&mut self) {
+    /// handle key input for scrolling, pausing, etc
+    pub fn handle_key_events(&mut self) -> bool {
         if let Ok(event) = self.key_events.next() {
             match event {
-                // speed
                 key!('.') => self.ticks.speed_up(),
                 key!(',') => self.ticks.slow_down(),
-                key!(Right) if self.paused() => self.tick(),
-                key!('p') => self.pause(),
-
-                // scrolling
+                key!(Right) if self.paused => self.tick(),
+                key!('p') => self.paused = !self.paused,
                 key!('h') => self.scroll_grid_left(),
                 key!('j') => self.scroll_grid_down(),
                 key!('k') => self.scroll_grid_up(),
                 key!('l') => self.scroll_grid_right(),
                 key!('i') => self.scroll_output_up(),
                 key!('o') => self.scroll_output_down(),
-
-                // exit/restart
                 key!('r') => self.restart(),
-                // key!('q') if self.ended() => break,
-                // key!(ctrl;'c') => break,
+                key!('q') if self.ended() => return true,
+                key!(ctrl;'c') => return true,
                 _ => {}
             }
         }
+        false
     }
-
     /// is the sim paused
     pub fn paused(&self) -> bool {
         self.paused

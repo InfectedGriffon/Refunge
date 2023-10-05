@@ -6,8 +6,6 @@
 - decrease heights of output and grid boxes
 - push every stack's size
 - re-add stack display
-- add back q and make program not stop immediately
-- control-c handling in tui mode
 - separate into multiple commands (eval, run, etc)
 - ensure timing is correct for spaces, semicolons, string mode spaces, etc
 - add option to print stack at end of program

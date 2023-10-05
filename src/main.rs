@@ -46,10 +46,10 @@ fn main() -> Result<()> {
         for _ in 0..n { befunge.tick() }
     }
 
-    while !befunge.ended() {
+    loop {
         terminal.draw(|f| befunge.render(f))?;
         if befunge.has_tick() && !befunge.paused() {befunge.tick()}
-        befunge.handle_key_events();
+        if befunge.handle_key_events() {break}
     }
 
     disable_raw_mode()?;
