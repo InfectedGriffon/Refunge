@@ -3,15 +3,15 @@
 - move over to Funge-98 terminology
 - fix up the input system
 - verbose/logging mode to display each action
-- move more things away from states
 - decrease heights of output and grid boxes
 - push every stack's size
+- re-add stack display
+- add back q and make program not stop immediately
+- control-c handling in tui mode
+- separate into multiple commands (eval, run, etc)
+- ensure timing is correct for spaces, semicolons, string mode spaces, etc
+- add option to print stack at end of program
 
-## Instructions
-### Concurrency
-- `t`: Split a new instruction pointer
-- `@`: destroy single ip (instead of stopping whole program)
-- `q`: quit (stop whole program)
 ### Fingerprints
 - `()`: load/unload semantics
 - `A-Z`: fingerprint-defined functions

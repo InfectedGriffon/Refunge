@@ -3,50 +3,39 @@ use std::thread;
 use std::time::{Duration, Instant};
 use crossterm::event::{KeyEvent, Event as CrosstermEvent, poll, read};
 use anyhow::Result;
+use crate::pointer::InstructionPointer;
 
 #[derive(Clone, Debug)]
 pub enum Event {
-    Tick,
-    Key(KeyEvent),
+    Spawn(InstructionPointer),
+    Kill,
 }
 
-/// provides events and handles changing of tickrate
 pub struct EventHandler {
-    tickrate: Arc<Mutex<Duration>>,
+    pub sender: mpsc::Sender<Event>,
     receiver: mpsc::Receiver<Event>
 }
 impl EventHandler {
-    /// creates a new event handler with a default tickrate of 128
-    pub fn new() -> EventHandler {
-        let (sender, receiver) = mpsc::channel::<Event>();
-        let inner_tickrate = Arc::new(Mutex::new(Duration::from_millis(128)));
-        let tickrate = Arc::clone(&inner_tickrate);
-
-        thread::spawn(move || {
-            let mut last_tick = Instant::now();
-            loop {
-                let timeout = inner_tickrate.lock().unwrap().saturating_sub(last_tick.elapsed());
-                if poll(timeout).unwrap_or(false) {
-                    if let CrosstermEvent::Key(key) = read().unwrap() {
-                        sender.send(Event::Key(key)).unwrap_or(());
-                    }
-                }
-                if last_tick.elapsed() >= *inner_tickrate.lock().unwrap() {
-                    sender.send(Event::Tick).unwrap_or(());
-                    last_tick = Instant::now();
-                }
-            }
-        });
-
-        EventHandler { tickrate, receiver }
+    pub fn next(&self) -> Option<Event> {
+        self.receiver.try_recv().ok()
     }
-
-    /// next event in the queue
-    pub fn next(&self) -> Result<Event> {
-        Ok(self.receiver.recv()?)
+}
+impl Default for EventHandler {
+    fn default() -> EventHandler {
+        let (sender, receiver) = mpsc::channel();
+        EventHandler { sender, receiver }
     }
+}
 
-    /// double the speed, up to a maximum of one tick per 16 milliseconds
+pub struct TickHandler {
+    tickrate: Arc<Mutex<Duration>>,
+    receiver: mpsc::Receiver<()>
+}
+impl TickHandler {
+    pub fn has_tick(&self) -> bool {
+        self.receiver.try_recv().is_ok()
+    }
+     /// double the speed, up to a maximum of one tick per 16 milliseconds
     pub fn speed_up(&self) {
         let mut tickrate = self.tickrate.lock().unwrap();
         *tickrate = Duration::from_millis((tickrate.as_millis()/2).max(16) as u64);
@@ -57,9 +46,46 @@ impl EventHandler {
         *tickrate = Duration::from_millis((tickrate.as_millis()*2).min(1024) as u64)
     }
 }
-impl Default for EventHandler {
-    fn default() -> EventHandler {
-        EventHandler::new()
+impl Default for TickHandler {
+    fn default() -> TickHandler {
+        let (inner_sender, receiver) = mpsc::channel();
+        let inner_tickrate = Arc::new(Mutex::new(Duration::from_millis(128)));
+        let tickrate = Arc::clone(&inner_tickrate);
+        thread::spawn(move || {
+            let mut last_tick = Instant::now();
+            loop {
+                if last_tick.elapsed() >= *inner_tickrate.lock().unwrap() {
+                    inner_sender.send(()).unwrap();
+                    last_tick = Instant::now();
+                }
+            }
+        });
+        TickHandler { tickrate, receiver }
+    }
+}
+
+pub struct KeyHandler {
+    receiver: mpsc::Receiver<KeyEvent>
+}
+impl KeyHandler {
+    pub fn new() -> KeyHandler {
+        let (sender, receiver) = mpsc::channel();
+        thread::spawn(move || loop {
+            if poll(Duration::ZERO).unwrap_or(false) {
+                if let CrosstermEvent::Key(key) = read().unwrap() {
+                    sender.send(key).unwrap_or(());
+                }
+            }
+        });
+        KeyHandler { receiver }
+    }
+    pub fn next(&self) -> Result<KeyEvent> {
+        Ok(self.receiver.try_recv()?)
+    }
+}
+impl Default for KeyHandler {
+    fn default() -> KeyHandler {
+        KeyHandler::new()
     }
 }
 

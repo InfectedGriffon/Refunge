@@ -2,7 +2,7 @@ use std::ops::Add;
 use rand::distributions::{Distribution, Standard};
 use rand::Rng;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct FungeVector(pub i32, pub i32);
 impl FungeVector {
     pub fn invert(&mut self) {

@@ -1,5 +1,8 @@
+use std::collections::VecDeque;
+use ratatui::buffer::Buffer;
+use ratatui::layout::Rect;
 use ratatui::prelude::{Line, Modifier, Span, Style};
-use ratatui::widgets::{Block, Borders, Paragraph};
+use ratatui::widgets::{Block, Borders, Paragraph, Widget};
 use crate::pointer::InstructionPointer;
 use crate::vector::FungeVector;
 
@@ -8,9 +11,9 @@ use crate::vector::FungeVector;
 pub struct FungeGrid {
     chars: Vec<Vec<char>>,
     og_chars: Vec<Vec<char>>,
-
     width: usize,
-    height: usize
+    height: usize,
+    highlights: Vec<FungeVector>
 }
 impl FungeGrid {
     /// parse some text into the 2d grid of characters
@@ -52,7 +55,7 @@ impl FungeGrid {
         output
     }
     /// find the position ahead of an ip in the current direction, including looping
-    pub fn cell_ahead_ip(&self, ip: InstructionPointer) -> FungeVector {
+    pub fn cell_ahead_ip(&self, ip: &InstructionPointer) -> FungeVector {
         FungeVector(
             (ip.pos.0 + ip.delta.0).rem_euclid(self.width as i32),
             (ip.pos.1 + ip.delta.1).rem_euclid(self.height as i32)
@@ -71,12 +74,12 @@ impl FungeGrid {
     }
 
     /// set a character in the grid, panics if outside the grid area
-    pub fn set_char(&mut self, pos: FungeVector, c: char, expand: bool) {
+    pub fn set_char(&mut self, pos: FungeVector, c: char) {
         if pos.is_negative() { return }
         let (x, y) = (pos.0 as usize, pos.1 as usize);
         if x < self.width && y < self.height {
             self.chars[y][x] = c;
-        } else if expand {
+        } else {
             while x >= self.width {
                 for row in &mut self.chars {
                     (*row).push(' ');
@@ -88,20 +91,18 @@ impl FungeGrid {
                 self.height += 1;
             }
             self.chars[y][x] = c;
-        } else {
-            panic!("trying to access area outside of grid")
         }
     }
     /// place some text within the grid
     pub fn place(&mut self, text: String, pos: FungeVector, binary: bool) {
         if binary {
             for (n, c) in text.chars().enumerate() {
-                self.set_char(pos + FungeVector(n as i32, 0), c, true);
+                self.set_char(pos + FungeVector(n as i32, 0), c);
             }
         } else {
             for (y, line) in text.lines().enumerate() {
                 for (x, c) in line.chars().enumerate() {
-                    self.set_char(pos + FungeVector(x as i32, y as i32), c, true);
+                    self.set_char(pos + FungeVector(x as i32, y as i32), c);
                 }
             }
         }
@@ -112,25 +113,28 @@ impl FungeGrid {
     /// the full height of the grid
     pub fn height(&self) -> usize {self.height}
 
-    /// render the grid into a paragraph, styling a selected spot bold
-    pub fn render(&self, sel: FungeVector) -> Paragraph {
+    pub fn highlights(mut self, selections: VecDeque<InstructionPointer>) -> Self {
+        for sel in selections {
+            self.highlights.push(sel.pos)
+        };
+        self
+    }
+}
+impl Widget for FungeGrid {
+    fn render(self, area: Rect, buf: &mut Buffer) {
         Paragraph::new(
             self.chars.iter().enumerate().map(|(y, r)| {
-                if y as i32 == sel.1 {
-                    Line::from(r.iter().enumerate().map(|(x, c)| {
-                        let symbolize_escapes = |c:&char|if c.is_control(){char::from_u32(*c as u32+0x2400).unwrap().to_string()}else{c.to_string()};
-                        if x as i32 == sel.0 {
-                            Span::styled(symbolize_escapes(c), Style::default()
-                                .add_modifier(Modifier::BOLD)
-                                .add_modifier(Modifier::UNDERLINED))
-                        } else {
-                            Span::raw(symbolize_escapes(c))
-                        }
-                    }).collect::<Vec<Span>>())
-                } else {
-                    Line::from(r.iter().collect::<String>())
-                }
+                Line::from(r.iter().enumerate().map(|(x, c)| {
+                    if self.highlights.contains(&FungeVector(x as i32, y as i32)) {
+                        Span::styled(c.to_string(), Style::default()
+                            .add_modifier(Modifier::BOLD)
+                            .add_modifier(Modifier::UNDERLINED))
+                    } else {
+                        Span::raw(c.to_string())
+                    }
+                }).collect::<Vec<Span>>())
             }).collect::<Vec<Line>>()
         ).block(Block::default().borders(Borders::ALL).title("Grid"))
+         .render(area, buf)
     }
 }

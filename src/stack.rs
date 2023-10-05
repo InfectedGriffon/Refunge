@@ -47,6 +47,7 @@ impl<T: Copy + Clone> FungeStack<T>
 
 impl<T: Display> FungeStack<T> {
     /// render to a vertical list, bottom to top
+    #[allow(dead_code)]
     pub fn render(&self, title: impl Into<String>) -> Paragraph {
         Paragraph::new(self.inner.iter().rev().map(|val| Line::from(val.to_string())).collect::<Vec<Line>>())
             .block(Block::default().borders(Borders::ALL).title(title.into()))
