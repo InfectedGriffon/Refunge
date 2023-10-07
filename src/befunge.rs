@@ -117,19 +117,11 @@ impl Befunge {
         self.ip_list.iter().all(|ip|ip.dead)
     }
 
-    /// print out the contents of all IPs' stacks
-    pub fn print_stacks(&self) {
-        if self.ip_list.len() == 1 {
-            for stack in self.ip_list[0].stacks.iter() {
-                println!("{stack:?}");
-            }
-        } else {
-            for (idx, ip) in self.ip_list.iter().enumerate() {
-                println!("IP {idx}:");
-                for stack in ip.stacks.iter() {
-                    println!(" {stack:?}");
-                }
-            }
+    /// log the contents of all IPs' stacks
+    pub fn log_stacks(&self) {
+        println!("Final stack contents:");
+        for (idx, ip) in self.ip_list.iter().enumerate() {
+            println!("IP {idx}: {:?}", ip.stacks);
         }
     }
 

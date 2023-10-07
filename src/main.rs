@@ -21,7 +21,7 @@ fn main() -> Result<()> {
     let args = Arguments::parse();
 
     if args.quiet {
-        let (max_ticks, print_stack) = (args.max_ticks, args.print_stack);
+        let (max_ticks, log_stack) = (args.max_ticks, args.log_stack);
         let mut befunge = Befunge::new(args);
         let c = CtrlCHandler::new();
         let mut ticks = 0u32;
@@ -31,7 +31,7 @@ fn main() -> Result<()> {
                 if ticks > max {break} else {ticks += 1}
             }
         }
-        if print_stack {befunge.print_stacks()}
+        if log_stack {befunge.log_stacks()}
         Ok(())
     } else {
         let mut terminal = create_tui()?;

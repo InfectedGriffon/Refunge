@@ -2,7 +2,6 @@
 ## General
 - move over to Funge-98 terminology
 - fix up the input system
-- verbose/logging mode to display each action
 - decrease heights of output and grid boxes
 - push every stack's size
 - re-add stack display

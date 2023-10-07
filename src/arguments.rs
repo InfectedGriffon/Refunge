@@ -3,6 +3,11 @@ pub struct Arguments {
     /// run in quiet mode (no tui)
     #[arg(short, long)]
     pub quiet: bool,
+    /// start on the first non-# line
+    #[arg(short, long)]
+    pub script: bool,
+    /// Target file
+    pub file: String,
 
     /// start interpretation paused
     #[arg(short, long, conflicts_with="quiet")]
@@ -11,16 +16,10 @@ pub struct Arguments {
     #[arg(short, long, conflicts_with="quiet")]
     pub jump: Option<u32>,
 
-    /// print out the stack(s) after ending
-    #[arg(short='l', long, requires="quiet")]
-    pub print_stack: bool,
+    /// log the stack(s) after ending
+    #[arg(short, long, requires="quiet")]
+    pub log_stack: bool,
     /// end interpreting early
-    #[arg(short, long="max", requires="quiet")]
+    #[arg(short, long, requires="quiet")]
     pub max_ticks: Option<u32>,
-
-    /// start on the first non-# line
-    #[arg(short, long)]
-    pub script: bool,
-    /// Target file
-    pub file: String
 }
