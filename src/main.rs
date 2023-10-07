@@ -22,7 +22,7 @@ fn main() -> Result<()> {
 
     // quiet mode (no display)
     if args.quiet {
-        let max_ticks = args.max_ticks;
+        let (max_ticks, print_stack) = (args.max_ticks, args.print_stack);
         let mut befunge = Befunge::new(args);
         let c = CtrlCHandler::new();
         let mut ticks = 0u32;
@@ -32,28 +32,29 @@ fn main() -> Result<()> {
                 if ticks > max {break} else {ticks += 1}
             }
         }
-        return Ok(());
+        if print_stack {befunge.print_stacks()}
+        Ok(())
+    } else {
+        // normal tui display
+        enable_raw_mode()?;
+        execute!(stdout(), EnterAlternateScreen)?;
+        let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
+        let jump_ticks = args.jump;
+        let mut befunge = Befunge::new(args);
+
+        if let Some(n) = jump_ticks {
+            for _ in 0..n { befunge.tick() }
+        }
+
+        loop {
+            terminal.draw(|f| befunge.render(f))?;
+            if befunge.has_tick() && !befunge.paused() {befunge.tick()}
+            if befunge.handle_key_events() {break}
+        }
+
+        disable_raw_mode()?;
+        execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
+        terminal.show_cursor()?;
+        Ok(())
     }
-
-    // normal tui display
-    enable_raw_mode()?;
-    execute!(stdout(), EnterAlternateScreen)?;
-    let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
-    let jump_ticks = args.jump;
-    let mut befunge = Befunge::new(args);
-
-    if let Some(n) = jump_ticks {
-        for _ in 0..n { befunge.tick() }
-    }
-
-    loop {
-        terminal.draw(|f| befunge.render(f))?;
-        if befunge.has_tick() && !befunge.paused() {befunge.tick()}
-        if befunge.handle_key_events() {break}
-    }
-
-    disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
-    terminal.show_cursor()?;
-    Ok(())
 }
