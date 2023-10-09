@@ -1,6 +1,10 @@
-use std::collections::VecDeque;
+use std::collections::{vec_deque, VecDeque};
 use std::fmt::{Debug, Display, Formatter};
+use std::io::Stdout;
 use std::ops::{Deref, DerefMut};
+use ratatui::backend::CrosstermBackend;
+use ratatui::Frame;
+use ratatui::prelude::{Constraint, Layout, Rect};
 use ratatui::text::Line;
 use ratatui::widgets::{Block, Borders, Paragraph};
 
@@ -47,16 +51,28 @@ impl<T: Copy + Clone> FungeStack<T>
 
 impl<T: Display> FungeStack<T> {
     /// render to a vertical list, bottom to top
-    #[allow(dead_code)]
-    pub fn render(&self, title: impl Into<String>) -> Paragraph {
-        Paragraph::new(self.inner.iter().rev().map(|val| Line::from(val.to_string())).collect::<Vec<Line>>())
-            .block(Block::default().borders(Borders::ALL).title(title.into()))
+    pub fn render(&self, frame: &mut Frame<CrosstermBackend<Stdout>>, area: Rect, max_height: u16, title: impl Into<String>,) {
+        let widget = Paragraph::new(self.inner.iter().rev().map(|val| Line::from(val.to_string())).collect::<Vec<Line>>())
+            .block(Block::default().borders(Borders::ALL).title(title.into()));
+        let bits = Layout::new().constraints(vec![Constraint::Length((self.len()as u16).max(max_height)),Constraint::Min(0)]).split(area);
+        frame.render_widget(widget, bits[0]);
     }
 }
 impl<T: Debug> Debug for FungeStack<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_list().entries(&self.inner).finish()
     }
+}
+
+impl<T> IntoIterator for FungeStack<T> {
+    type Item = T;
+    type IntoIter = vec_deque::IntoIter<T>;
+    fn into_iter(self) -> Self::IntoIter {self.inner.into_iter()}
+}
+impl<'a, T> IntoIterator for &'a FungeStack<T> {
+    type Item = &'a T;
+    type IntoIter = vec_deque::Iter<'a, T>;
+    fn into_iter(self) -> Self::IntoIter {self.iter()}
 }
 
 impl<T> Deref for FungeStack<T> {

@@ -114,9 +114,7 @@ impl FungeGrid {
     pub fn height(&self) -> usize {self.height}
 
     pub fn highlights(mut self, selections: VecDeque<InstructionPointer>) -> Self {
-        for sel in selections {
-            self.highlights.push(sel.pos)
-        };
+        self.highlights = selections.iter().map(|ip|ip.pos).collect();
         self
     }
 }

@@ -124,42 +124,63 @@ impl Befunge {
             println!("IP {idx}: {:?}", ip.stacks);
         }
     }
+    fn stack_constraints(&self) -> Vec<Constraint> {
+        let mut arr = vec![];
+        for ip in &self.ip_list {
+            arr.push(Constraint::Length(1));
+            for _ in &ip.stacks {
+                arr.push(Constraint::Length(8));
+            }
+        }
+        arr.push(Constraint::Min(1));
+        arr
+    }
+    fn max_stack_len(&self) -> u16 {
+        self.ip_list.iter().map(|ip| ip.stacks.iter().max_by_key(|s| s.len()).unwrap().len()).max().unwrap() as u16
+    }
 
     /// render the grid, stack, output, and message
     pub fn render(&mut self, f: &mut Frame<CrosstermBackend<Stdout>>) {
         let grid_width = (self.grid.width() as u16+2).clamp(20, 80);
         let grid_height = (self.grid.height() as u16+2).clamp(9, 25);
         let output_height = textwrap::wrap(&self.out, grid_width as usize-2).len() as u16+2;
-        // let stack_height = (grid_height+output_height).max(self.stacks[0].len() as u16+2);
+        let stack_height = (grid_height+output_height).max(self.max_stack_len()+2);
         let chunks = Layout::new()
-            .constraints(vec![Constraint::Length(grid_width),Constraint::Length(8),Constraint::Length(8),Constraint::Min(0)])
+            .constraints(vec![Constraint::Length(grid_width),Constraint::Min(0)])
             .direction(Horizontal)
             .split(f.size());
         let column_a = Layout::new()
             .constraints(vec![Constraint::Length(grid_height),Constraint::Length(output_height),Constraint::Min(0)])
             .split(chunks[0]);
         let column_b = Layout::new()
-            .constraints(vec![/*Constraint::Length(stack_height),*/Constraint::Min(1)])
+            .constraints([Constraint::Length(stack_height),Constraint::Min(1)])
             .split(chunks[1]);
-
+        let stack_zone = Layout::new()
+            .constraints(self.stack_constraints())
+            .direction(Horizontal)
+            .split(column_b[0]);
         let output = Paragraph::new(self.out.clone())
             .wrap(Wrap { trim: false })
             .block(Block::default().borders(Borders::ALL).title("Output"))
             .scroll((self.output_scroll, 0));
-        // let stack = self.stacks[0].render(if self.stacks.len()>  1 {"TOSS"} else if self.stacks[0].queue_mode {"Queue"} else {"Stack"});
 
         f.render_widget(self.grid.clone().highlights(self.ip_list.clone()), column_a[0]);
-        // f.render_widget(self.grid.render(self.ip.pos).scroll(self.grid_scroll), column_a[0]);
         f.render_widget(output, column_a[1]);
-        if self.ended() {f.render_widget(Paragraph::new("sim ended.\npress r to restart,\nor q to exit."), column_a[2])}
-        // f.render_widget(stack, column_b[0]);
-        // if self.stacks.len() > 1 {
-        //     f.render_widget(
-        //         self.stacks[1].render("SOSS"),
-        //         Layout::new().constraints(vec![Constraint::Length(self.stacks[1].len()as u16+2),Constraint::Min(0)]).split(chunks[2])[0]
-        //     )
-        // }
-        if self.paused {f.render_widget(Paragraph::new("paused"), /*column_b[1]*/column_b[0])}
+        if self.ended() {f.render_widget(Paragraph::new("Funge ended.\nPress r to restart,\nor q to exit."), column_a[2])}
+        let mut index = 0;
+        for ip in &self.ip_list {
+            f.render_widget(
+                Paragraph::new(format!("IP {}",ip.id))
+                    .wrap(Wrap{trim:true})
+                    .block(Block::default().borders(Borders::TOP|Borders::BOTTOM)),
+                stack_zone[index]);
+            index+=1;
+            for stack in &ip.stacks {
+                stack.render(f, stack_zone[index], stack_height, "Stack");
+                index+=1;
+            }
+        }
+        if self.paused {f.render_widget(Paragraph::new("paused"), column_b[1])}
     }
 
     pub fn scroll_grid_up(&mut self) { self.grid_scroll.0 = self.grid_scroll.0.saturating_sub(1) }

@@ -4,7 +4,6 @@
 - fix up the input system
 - decrease heights of output and grid boxes
 - push every stack's size
-- re-add stack display
 - ensure timing is correct for spaces, semicolons, string mode spaces, etc
 
 ### Fingerprints
