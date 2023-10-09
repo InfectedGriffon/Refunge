@@ -20,13 +20,13 @@ pub struct InstructionPointer {
     pub offset: FungeVector,
     pub string_mode: bool,
     pub stacks: FungeStack<FungeStack<i32>>,
-    pub id: i32,
+    pub id: usize,
     pub dead: bool,
     pub first_tick: bool,
 }
 impl InstructionPointer {
     /// create a new instruction pointer facing right at specified coordinates
-    pub fn new(pos: FungeVector, delta: FungeVector, id: i32) -> InstructionPointer {
+    pub fn new(pos: FungeVector, delta: FungeVector, id: usize) -> InstructionPointer {
         InstructionPointer {
             pos,
             delta,
@@ -264,12 +264,7 @@ impl InstructionPointer {
                 grid.set_char(pos, c);
                 self.walk(grid);
             },
-            't' => {
-                let mut child = self.clone();
-                child.delta.invert();
-                child.id+=1;
-                sender.send(Event::Spawn(child)).unwrap();
-            },
+            't' => sender.send(Event::Spawn(self.id)).unwrap(),
             'u' => {
                 if self.stacks.len() == 1 { return self.delta.invert() }
                 let count = self.pop();
@@ -317,7 +312,7 @@ impl InstructionPointer {
                     // 7: dimension
                     Box::new(|_,ip| ip.push(2)),
                     // 8: pointer id
-                    Box::new(|_,ip| ip.push(ip.id)),
+                    Box::new(|_,ip| ip.push(ip.id as i32)),
                     // 9: team number
                     Box::new(|_,ip| ip.push(0)),
                     // 10: pos

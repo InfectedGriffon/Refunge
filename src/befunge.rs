@@ -68,10 +68,16 @@ impl Befunge {
             }
             if ip.first_tick {ip.first_tick = false}
         }
-        match self.events.next() {
-            Some(Event::Spawn(ip)) => self.ip_list.push_front(ip),
-            Some(Event::Kill) => for ip in self.ip_list.iter_mut() { ip.dead = true },
-            None => {}
+        if let Some(event) = self.events.next() {
+            match event {
+                Event::Spawn(id) => {
+                    let mut new_ip = self.ip_list[id].clone();
+                    new_ip.delta.invert();
+                    self.ip_list.insert(id, new_ip);
+                    for (idx, ip) in self.ip_list.iter_mut().enumerate() {ip.id = idx}
+                }
+                Event::Kill => for ip in self.ip_list.iter_mut() { ip.dead = true }
+            }
         }
     }
     /// reset everything

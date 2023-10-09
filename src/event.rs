@@ -3,11 +3,10 @@ use std::thread;
 use std::time::{Duration, Instant};
 use crossterm::event::{KeyEvent, Event as CrosstermEvent, poll, read};
 use anyhow::Result;
-use crate::pointer::InstructionPointer;
 
 #[derive(Clone, Debug)]
 pub enum Event {
-    Spawn(InstructionPointer),
+    Spawn(usize),
     Kill,
 }
 
