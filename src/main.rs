@@ -7,9 +7,10 @@ mod input;
 mod stack;
 mod pointer;
 
+use std::io;
 use clap::Parser;
 use std::io::{stdout, Stdout};
-use anyhow::Result;
+use anyhow::{bail, Result};
 use crossterm::execute;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode, LeaveAlternateScreen, EnterAlternateScreen};
 use ctrlc_handler::CtrlCHandler;
@@ -32,6 +33,7 @@ fn main() -> Result<()> {
             }
         }
         if log_stack {befunge.log_stacks()}
+        if let Some(code) = befunge.exit_code {bail!("process created code {}", code)}
         Ok(())
     } else {
         let mut terminal = create_tui()?;
@@ -45,15 +47,17 @@ fn main() -> Result<()> {
             if befunge.has_tick() && !befunge.paused() {befunge.tick()}
             if befunge.handle_key_events() {break}
         }
-        exit_tui(terminal)
+        exit_tui(terminal)?;
+        if let Some(code) = befunge.exit_code {bail!("process created code {}", code)}
+        Ok(())
     }
 }
-fn create_tui() -> Result<Terminal<CrosstermBackend<Stdout>>> {
+fn create_tui() -> io::Result<Terminal<CrosstermBackend<Stdout>>> {
     enable_raw_mode()?;
     execute!(stdout(), EnterAlternateScreen)?;
     Ok(Terminal::new(CrosstermBackend::new(stdout()))?)
 }
-fn exit_tui(mut terminal: Terminal<CrosstermBackend<Stdout>>) -> Result<()> {
+fn exit_tui(mut terminal: Terminal<CrosstermBackend<Stdout>>) -> io::Result<()> {
     disable_raw_mode()?;
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
     Ok(terminal.show_cursor()?)

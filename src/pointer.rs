@@ -256,7 +256,10 @@ impl InstructionPointer {
                 let c = self.pop_char();
                 grid.set_char(pos + self.offset, c);
             },
-            'q' => sender.send(Event::Kill).unwrap(),
+            'q' => {
+                let code = self.pop();
+                sender.send(Event::Kill(code)).unwrap()
+            },
             'r' => self.delta.invert(),
             's' => {
                 let c = self.pop_char();

@@ -7,7 +7,7 @@ use anyhow::Result;
 #[derive(Clone, Debug)]
 pub enum Event {
     Spawn(usize),
-    Kill,
+    Kill(i32),
 }
 
 pub struct EventHandler {

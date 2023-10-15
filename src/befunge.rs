@@ -28,6 +28,8 @@ pub struct Befunge {
     /// scrolling for output text
     output_scroll: u16,
 
+    /// exit code for q command
+    pub exit_code: Option<i32>,
     /// stored command line arguments
     args: Arguments,
     /// global events
@@ -76,7 +78,10 @@ impl Befunge {
                     self.ip_list.insert(id, new_ip);
                     for (idx, ip) in self.ip_list.iter_mut().enumerate() {ip.id = idx}
                 }
-                Event::Kill => for ip in self.ip_list.iter_mut() { ip.dead = true }
+                Event::Kill(code) => {
+                    self.exit_code = Some(code);
+                    for ip in self.ip_list.iter_mut() { ip.dead = true }
+                }
             }
         }
     }
