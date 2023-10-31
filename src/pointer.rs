@@ -5,9 +5,9 @@ use std::path::Path;
 use std::process::Command;
 use std::sync::mpsc;
 use chrono::{Datelike, Timelike};
+use crate::befunge::InputType;
 use crate::event::Event;
 use crate::grid::FungeGrid;
-use crate::input::take_input_parse;
 use crate::stack::FungeStack;
 use crate::vector;
 use crate::vector::FungeVector;
@@ -108,7 +108,7 @@ impl InstructionPointer {
                 let (x, y) = (self.pop(), self.pop());
                 if x == 0 {self.push(0)} else {self.push(y % x)}
             }
-            '&' => self.push(take_input_parse::<i32>("enter a number").unwrap()),
+            '&' => sender.send(Event::Input(InputType::Number, self.id)).unwrap(),
             '\'' => {
                 let c = grid.char_at(grid.cell_ahead_ip(self));
                 self.push(c as i32);
@@ -378,7 +378,7 @@ impl InstructionPointer {
                 }
                 self.stacks.pop_front();
             }
-            '~' => self.push(take_input_parse::<char>("enter a character").unwrap() as i32),
+            '~' => sender.send(Event::Input(InputType::Character, self.id)).unwrap(),
             _ => self.delta.invert(),
         }
     }

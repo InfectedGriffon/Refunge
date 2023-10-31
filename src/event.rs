@@ -3,11 +3,13 @@ use std::thread;
 use std::time::{Duration, Instant};
 use crossterm::event::{KeyEvent, Event as CrosstermEvent, poll, read};
 use anyhow::Result;
+use crate::befunge::InputType;
 
 #[derive(Clone, Debug)]
 pub enum Event {
     Spawn(usize),
     Kill(i32),
+    Input(InputType, usize),
 }
 
 pub struct EventHandler {
@@ -91,15 +93,15 @@ impl Default for KeyHandler {
 #[macro_export]
 macro_rules! key {
     ($char:literal) => {
-        KeyEvent{code:KeyCode::Char($char),modifiers:KeyModifiers::NONE,kind:KeyEventKind::Release,..}
+        ::crossterm::event::KeyEvent{code:KeyCode::Char($char),modifiers:KeyModifiers::NONE,kind:KeyEventKind::Release,..}
     };
     ($key:ident) => {
-        KeyEvent{code:KeyCode::$key,modifiers:KeyModifiers::NONE,kind:KeyEventKind::Release,..}
+        ::crossterm::event::KeyEvent{code:KeyCode::$key,modifiers:KeyModifiers::NONE,kind:KeyEventKind::Release,..}
     };
     (ctrl;$char:literal) => {
-        KeyEvent{code:KeyCode::Char($char),modifiers:KeyModifiers::CONTROL,kind:KeyEventKind::Release,..}
+        ::crossterm::event::KeyEvent{code:KeyCode::Char($char),modifiers:KeyModifiers::CONTROL,kind:KeyEventKind::Release,..}
     };
     (ctrl;$key:ident) => {
-        KeyEvent{code:KeyCode::$key,modifiers:KeyModifiers::CONTROL,kind:KeyEventKind::Release,..}
+        ::crossterm::event::KeyEvent{code:KeyCode::$key,modifiers:KeyModifiers::CONTROL,kind:KeyEventKind::Release,..}
     }
 }

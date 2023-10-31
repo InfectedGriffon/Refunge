@@ -3,7 +3,6 @@ mod vector;
 mod grid;
 mod event;
 mod arguments;
-mod input;
 mod stack;
 mod pointer;
 
@@ -40,7 +39,10 @@ fn main() -> Result<()> {
         let jump_ticks = args.jump;
         let mut befunge = Befunge::new(args);
         if let Some(n) = jump_ticks {
-            for _ in 0..n { befunge.tick() }
+            for _ in 0..n {
+                befunge.tick();
+                if befunge.paused() {break}
+            }
         }
         loop {
             terminal.draw(|f| befunge.render(f))?;
