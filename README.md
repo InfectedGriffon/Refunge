@@ -28,6 +28,5 @@ While in the TUI, the following keyboard shortcuts are available:
 - ctrl-c: exit immediately
 
 ### Todo
-- ensure timing is correct for spaces, semicolons, string mode spaces, etc
 - add functionality to `h` and `m`
 - add fingerprints (`()A-Z` commands)
