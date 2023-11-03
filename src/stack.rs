@@ -1,11 +1,9 @@
-use ratatui::backend::CrosstermBackend;
+use crate::befunge::Frame;
 use ratatui::prelude::{Constraint, Layout, Rect};
 use ratatui::text::Line;
 use ratatui::widgets::{Block, Borders, Paragraph};
-use ratatui::Frame;
 use std::collections::{vec_deque, VecDeque};
 use std::fmt::{Debug, Display, Formatter};
-use std::io::Stdout;
 use std::ops::{Index, IndexMut};
 
 /// a wrapper around VecDeque with queue/invert mode functionality
@@ -78,13 +76,7 @@ impl<T: Copy + Clone> FungeStack<T> {
 }
 impl<T: Display> FungeStack<T> {
     /// render to a vertical list, bottom to top
-    pub fn render(
-        &self,
-        frame: &mut Frame<CrosstermBackend<Stdout>>,
-        area: Rect,
-        max_height: u16,
-        title: impl Into<String>,
-    ) {
+    pub fn render(&self, frame: &mut Frame, area: Rect, max_height: u16, title: impl Into<String>) {
         let widget = Paragraph::new(
             self.inner
                 .iter()

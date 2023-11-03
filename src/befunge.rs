@@ -8,13 +8,14 @@ use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction::Horizontal, Layout};
 use ratatui::style::{Color, Style};
 use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
-use ratatui::Frame;
 use std::collections::VecDeque;
 use std::fmt::Display;
 use std::fs::read_to_string;
 use std::io;
 use std::str::FromStr;
 use tui_textarea::TextArea;
+
+pub(crate) type Frame<'a> = ratatui::Frame<'a, CrosstermBackend<io::Stdout>>;
 
 #[derive(Default)]
 pub struct Befunge<'a> {
@@ -251,7 +252,7 @@ impl<'a> Befunge<'a> {
     }
 
     /// render the grid, stack, output, and message
-    pub fn render(&mut self, f: &mut Frame<CrosstermBackend<io::Stdout>>) {
+    pub fn render(&mut self, f: &mut Frame) {
         let grid_width = (self.grid.width() as u16 + 2).clamp(20, 80);
         let grid_height = (self.grid.height() as u16 + 2).clamp(9, 25);
         let output_height = textwrap::wrap(&self.out, grid_width as usize - 2).len() as u16 + 2;
