@@ -4,18 +4,16 @@ use crate::grid::FungeGrid;
 use crate::pointer::InstructionPointer;
 use crate::{key, vector};
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
-use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction::Horizontal, Layout};
 use ratatui::style::{Color, Style};
 use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
+use ratatui::Frame;
 use std::collections::VecDeque;
 use std::fmt::Display;
 use std::fs::read_to_string;
 use std::io;
 use std::str::FromStr;
 use tui_textarea::TextArea;
-
-pub(crate) type Frame<'a> = ratatui::Frame<'a, CrosstermBackend<io::Stdout>>;
 
 #[derive(Default)]
 pub struct Befunge<'a> {

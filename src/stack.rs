@@ -1,7 +1,7 @@
-use crate::befunge::Frame;
 use ratatui::prelude::{Constraint, Layout, Rect};
 use ratatui::text::Line;
 use ratatui::widgets::{Block, Borders, Paragraph};
+use ratatui::Frame;
 use std::collections::{vec_deque, VecDeque};
 use std::fmt::{Debug, Display, Formatter};
 use std::ops::{Index, IndexMut};
