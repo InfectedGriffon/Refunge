@@ -102,7 +102,7 @@ impl InstructionPointer {
                 while grid.char_at(self.pos) == ' ' {
                     self.walk(grid)
                 }
-                self.walk_reverse(grid)
+                self.command(grid.char_at(self.pos), grid, sender.clone(), out, quiet);
             }
             // Logical Not
             '!' => {
@@ -194,6 +194,8 @@ impl InstructionPointer {
                 while grid.char_at(self.pos) != ';' {
                     self.walk(grid);
                 }
+                self.walk(grid);
+                self.command(grid.char_at(self.pos), grid, sender.clone(), out, quiet);
             }
             // Go West
             '<' => self.delta = vector::WEST,
