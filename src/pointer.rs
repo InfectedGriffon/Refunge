@@ -335,7 +335,16 @@ impl InstructionPointer {
                     // 17: size of stack-stack
                     Box::new(|_,ip| ip.push(ip.stacks.len() as i32)),
                     // 18: size of stack
-                    Box::new(|_,ip| ip.push(ip.stacks[0].len() as i32)),
+                    Box::new(|_, ip| {
+                        let stack_lens = ip
+                            .stacks
+                            .iter()
+                            .map(|s| s.len() as i32)
+                            .collect::<Vec<i32>>();
+                        for len in stack_lens {
+                            ip.push(len);
+                        }
+                    }),
                     // 19: program arguments as 0gnirts, with another nul at end
                     Box::new(|_,ip| ip.push_0gnirts(args().collect::<Vec<String>>().join("\x00") + "\x00\x00")),
                     // 20: env vars as key=val 0nigrts, with another null at end

@@ -28,9 +28,6 @@ While in the TUI, the following keyboard shortcuts are available:
 - ctrl-c: exit immediately
 
 ### Todo
-- fix up the input system
-- reorganize src files (core folder?)
-- push every stack's size in y instruction
 - ensure timing is correct for spaces, semicolons, string mode spaces, etc
 - add functionality to `h` and `m`
 - add fingerprints (`()A-Z` commands)
