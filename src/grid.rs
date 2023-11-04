@@ -104,8 +104,15 @@ impl FungeGrid {
             (pos.0 + delta.0).rem_euclid(self.width as i32),
             (pos.1 + delta.1).rem_euclid(self.height as i32),
         );
-        match self.chars[pos2.1 as usize][pos2.0 as usize] {
-            ' ' | ';' => self.runnable_char_ahead(pos2, delta),
+        match self.char_at(pos2) {
+            ' ' => self.runnable_char_ahead(pos2, delta),
+            ';' => {
+                let mut next_pos = pos2 + delta;
+                while self.char_at(next_pos) != ';' {
+                    next_pos += delta;
+                }
+                self.runnable_char_ahead(next_pos + delta, delta)
+            }
             c => c,
         }
     }

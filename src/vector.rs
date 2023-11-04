@@ -1,6 +1,6 @@
 use rand::distributions::{Distribution, Standard};
 use rand::Rng;
-use std::ops::Add;
+use std::ops::{Add, AddAssign};
 
 /// represents a 2-dimensional vector with integer coordinates
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -53,6 +53,12 @@ impl Add<FungeVector> for FungeVector {
     type Output = FungeVector;
     fn add(self, rhs: FungeVector) -> FungeVector {
         FungeVector(self.0 + rhs.0, self.1 + rhs.1)
+    }
+}
+impl AddAssign for FungeVector {
+    fn add_assign(&mut self, rhs: Self) {
+        self.0 += rhs.0;
+        self.1 += rhs.1;
     }
 }
 

@@ -42,6 +42,7 @@ impl InstructionPointer {
         self.pos.0 = (self.pos.0 + self.delta.0).rem_euclid(grid.width() as i32);
         self.pos.1 = (self.pos.1 + self.delta.1).rem_euclid(grid.height() as i32);
     }
+    /// move one space backwards, wrapping around if needed
     pub fn walk_reverse(&mut self, grid: &FungeGrid) {
         self.pos.0 = (self.pos.0 - self.delta.0).rem_euclid(grid.width() as i32);
         self.pos.1 = (self.pos.1 - self.delta.1).rem_euclid(grid.height() as i32);
