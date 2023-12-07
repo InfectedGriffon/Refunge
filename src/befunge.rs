@@ -151,6 +151,7 @@ impl<'a> Befunge<'a> {
         self.out.clear();
         self.paused = self.args.paused;
         self.textarea = TextArea::default();
+        self.textarea.set_cursor_style(Style::default());
     }
 
     /// is there a tick available
@@ -162,8 +163,8 @@ impl<'a> Befunge<'a> {
         if let Some(event) = self.key_events.next() {
             if matches!(event, key!(ctrl;'c')) {
                 return true;
-            } // priority over input events
-            if self.inputting && event.kind == KeyEventKind::Release {
+            } // give priority to input events
+            if self.inputting {
                 self.handle_tui_input(event);
                 return false;
             }
@@ -186,31 +187,25 @@ impl<'a> Befunge<'a> {
         false
     }
     fn handle_tui_input(&mut self, event: KeyEvent) {
-        match event {
-            key!(Enter) => {
-                if self.valid_input {
-                    let text = self.textarea.lines().last().unwrap();
-                    self.ip_list[self.input_target].push(self.input_type.parse(text));
-                    self.inputting = false;
-                }
-                self.textarea.move_cursor(tui_textarea::CursorMove::Head);
-                self.textarea.delete_line_by_end();
+        if matches!(event, key!(Enter)) {
+            if self.valid_input {
+                let text = self.textarea.lines().last().unwrap();
+                self.ip_list[self.input_target].push(self.input_type.parse(text));
+                self.inputting = false;
             }
-            _ => {
-                if self.textarea.input(event) {
-                    if match self.input_type {
-                        InputType::Number => self.textarea.lines()[0].parse::<i32>().is_ok(),
-                        InputType::Character => self.textarea.lines()[0].parse::<char>().is_ok(),
-                    } {
-                        self.textarea
-                            .set_style(Style::default().fg(Color::LightGreen));
-                        self.valid_input = true;
-                    } else {
-                        self.textarea
-                            .set_style(Style::default().fg(Color::LightRed));
-                        self.valid_input = false;
-                    }
-                }
+            self.textarea.move_cursor(tui_textarea::CursorMove::Head);
+            self.textarea.delete_line_by_end();
+            return;
+        }
+        if self.textarea.input(event) {
+            if self.input_type.can_parse(&self.textarea.lines()[0]) {
+                self.textarea
+                    .set_style(Style::default().fg(Color::LightGreen));
+                self.valid_input = true;
+            } else {
+                self.textarea
+                    .set_style(Style::default().fg(Color::LightRed));
+                self.valid_input = false;
             }
         }
     }
@@ -332,6 +327,13 @@ impl InputType {
         match self {
             InputType::Number => parse_input(),
             InputType::Character => parse_input::<char>() as i32,
+        }
+    }
+    /// check if a string would be valid if it was parsed as the desired type
+    fn can_parse(&self, text: &str) -> bool {
+        match self {
+            InputType::Number => text.parse::<i32>().is_ok(),
+            InputType::Character => text.parse::<char>().is_ok(),
         }
     }
 }
