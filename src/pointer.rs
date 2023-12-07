@@ -2,6 +2,7 @@ use crate::befunge::InputType;
 use crate::event::Event;
 use crate::grid::FungeGrid;
 use crate::stack::FungeStack;
+use crate::stackable::Stackable;
 use crate::vector;
 use crate::vector::FungeVector;
 use chrono::{Datelike, Timelike};
@@ -11,6 +12,13 @@ use std::io::Write;
 use std::path::Path;
 use std::process::Command;
 use std::sync::mpsc;
+
+macro_rules! stack_op {
+    ($ip:expr; $($name:ident),*; $($value:expr),*) => {{
+        $( let $name: i32 = $ip.pop(); )*
+        $( $ip.push($value); )*
+    }};
+}
 
 /// an IP that reads from funge-space and performs instructions to its stack
 #[derive(Debug, Default, Clone)]
@@ -52,39 +60,13 @@ impl InstructionPointer {
     pub fn pop(&mut self) -> i32 {
         self.stacks[0].pop()
     }
-    /// get the top value from the stack as a character
-    pub fn pop_char(&mut self) -> char {
-        char::from_u32(self.pop() as u32).unwrap_or(' ')
+    /// get the top value from the stack as another type
+    pub fn pop_t<T: Stackable>(&mut self) -> T {
+        T::pop(&mut self.stacks[0])
     }
-    /// pop values from the stack and parse into chars until a zero is found
-    pub fn pop_0gnirts(&mut self) -> String {
-        let mut output = String::new();
-        loop {
-            let c = self.pop();
-            if c == 0 {
-                return output;
-            }
-            output.push(char::from_u32(c as u32).unwrap_or(' '));
-        }
-    }
-    /// pop a vector off of the stack in the order y, x
-    pub fn pop_vector(&mut self) -> FungeVector {
-        let (y, x) = (self.pop(), self.pop());
-        FungeVector(x, y)
-    }
-    /// push a number onto the top of the stack
-    pub fn push(&mut self, n: i32) {
-        self.stacks[0].push(n)
-    }
-    /// push a null-terminated string onto the stack
-    pub fn push_0gnirts(&mut self, s: String) {
-        self.push(0);
-        s.chars().rev().for_each(|c| self.push(c as i32));
-    }
-    /// push a 2d coordinate onto the stack
-    pub fn push_vector(&mut self, pos: FungeVector) {
-        self.push(pos.0);
-        self.push(pos.1);
+    /// push a value onto the top of the stack
+    pub fn push<T: Stackable>(&mut self, val: T) {
+        T::push(&mut self.stacks[0], val);
     }
 
     /// execute a Funge-98 instruction based on a given character,
@@ -106,23 +88,14 @@ impl InstructionPointer {
                 self.command(grid.char_at(self.pos), grid, sender.clone(), out, quiet);
             }
             // Logical Not
-            '!' => {
-                let n = self.pop();
-                self.push(if n == 0 { 1 } else { 0 })
-            }
-            // Toggle Stringmode
+            '!' => stack_op!(self; n; if n == 0 {1} else {0}),
             '"' => self.string_mode = true,
             // Trampoline
             '#' => self.walk(grid),
             // Pop
-            '$' => {
-                self.pop();
-            }
+            '$' => stack_op!(self; _del; ),
             // Remainder
-            '%' => {
-                let (x, y) = (self.pop(), self.pop());
-                self.push(y.checked_rem(x).unwrap_or_default());
-            }
+            '%' => stack_op!(self; x, y; y.checked_rem(x).unwrap_or_default()),
             // Input Integer
             '&' => sender
                 .send(Event::Input(InputType::Number, self.id))
@@ -130,23 +103,17 @@ impl InstructionPointer {
             // Fetch Character
             '\'' => {
                 self.walk(grid);
-                self.push(grid.char_at(self.pos) as i32);
+                self.push(grid.char_at(self.pos));
             }
             // '(' { Fingerprints: Load Semantics }
             // ')' { Fingerprints: Unload Semantics }
             // Multiply
-            '*' => {
-                let (x, y) = (self.pop(), self.pop());
-                self.push(x.saturating_mul(y))
-            }
+            '*' => stack_op!(self; x, y; x.saturating_mul(y)),
             // Add
-            '+' => {
-                let (x, y) = (self.pop(), self.pop());
-                self.push(x.saturating_add(y))
-            }
+            '+' => stack_op!(self; x, y; x.saturating_add(y)),
             // Output Character
             ',' => {
-                let c = self.pop_char();
+                let c: char = self.pop_t();
                 if quiet {
                     print!("{c}");
                 } else {
@@ -154,10 +121,7 @@ impl InstructionPointer {
                 }
             }
             // Subtract
-            '-' => {
-                let (x, y) = (self.pop(), self.pop());
-                self.push(y.saturating_sub(x));
-            }
+            '-' => stack_op!(self; x, y; y.saturating_sub(x)),
             // Output Integer
             '.' => {
                 let n = self.pop();
@@ -168,27 +132,11 @@ impl InstructionPointer {
                 }
             }
             // Divide
-            '/' => {
-                let (x, y) = (self.pop(), self.pop());
-                self.push(y.checked_div(x).unwrap_or_default());
-            }
+            '/' => stack_op!(self; x, y; y.checked_div(x).unwrap_or_default()),
             // Decimal Literals
-            '0' => self.push(0),
-            '1' => self.push(1),
-            '2' => self.push(2),
-            '3' => self.push(3),
-            '4' => self.push(4),
-            '5' => self.push(5),
-            '6' => self.push(6),
-            '7' => self.push(7),
-            '8' => self.push(8),
-            '9' => self.push(9),
+            '0'..='9' => stack_op!(self; ; c.to_digit(10).unwrap() as i32),
             // Duplicate
-            ':' => {
-                let n = self.pop();
-                self.push(n);
-                self.push(n);
-            }
+            ':' => stack_op!(self; n; n, n),
             // Jump Over
             ';' => {
                 self.walk(grid); // move off of current semicolon
@@ -202,7 +150,7 @@ impl InstructionPointer {
             '<' => self.delta = vector::WEST,
             // Execute
             '=' => {
-                let cmd = self.pop_0gnirts();
+                let cmd: String = self.pop_t();
                 self.push(
                     Command::new("cmd.exe")
                         .args(vec!["/c", &cmd])
@@ -222,11 +170,7 @@ impl InstructionPointer {
             // Turn Left
             '[' => self.delta.turn_left(),
             // Swap
-            '\\' => {
-                let (x, y) = (self.pop(), self.pop());
-                self.push(x);
-                self.push(y);
-            }
+            '\\' => stack_op!(self; x, y; x, y),
             // Turn Right
             ']' => self.delta.turn_right(),
             // Go North
@@ -240,29 +184,17 @@ impl InstructionPointer {
                 }
             }
             // Greater Than
-            '`' => {
-                let (x, y) = (self.pop(), self.pop());
-                self.push(if y > x { 1 } else { 0 })
-            }
+            '`' => stack_op!(self; x, y; if y > x { 1 } else { 0 }),
             // Hexadecimal Literals
-            'a' => self.push(10),
-            'b' => self.push(11),
-            'c' => self.push(12),
-            'd' => self.push(13),
-            'e' => self.push(14),
-            'f' => self.push(15),
+            'a'..='f' => stack_op!(self; ; c.to_digit(16).unwrap() as i32),
             // Get
-            'g' => {
-                let (y, x) = (self.pop(), self.pop());
-                let c = grid.char_at(FungeVector(x, y));
-                self.push(c as i32)
-            }
+            'g' => stack_op!(self; y, x; grid.char_at(FungeVector(x, y))),
             // 'h' { Trefunge: Go High }
             // Input File
             'i' => {
-                let filename = self.pop_0gnirts();
+                let filename: String = self.pop_t();
                 let flags = self.pop();
-                let pos = self.pop_vector();
+                let pos: FungeVector = self.pop_t();
                 if !Path::new(&filename).exists() {
                     self.delta.invert()
                 } else {
@@ -304,11 +236,11 @@ impl InstructionPointer {
             'n' => self.stacks[0].clear(),
             // Output File
             'o' => {
-                let filename = self.pop_0gnirts();
+                let filename: String = self.pop_t();
                 let path = Path::new(&filename);
                 let flags = self.pop();
-                let v_a = self.pop_vector();
-                let v_b = self.pop_vector();
+                let v_a: FungeVector = self.pop_t();
+                let v_b: FungeVector = self.pop_t();
                 let mut text = grid.read_from(v_a, v_b);
                 if flags & 1 != 0 {
                     text = text
@@ -333,8 +265,8 @@ impl InstructionPointer {
             }
             // Put
             'p' => {
-                let pos = self.pop_vector();
-                let c = self.pop_char();
+                let pos: FungeVector = self.pop_t();
+                let c: char = self.pop_t();
                 grid.set_char(pos + self.offset, c);
             }
             // Quit
@@ -346,7 +278,7 @@ impl InstructionPointer {
             'r' => self.delta.invert(),
             // Store Character
             's' => {
-                let c = self.pop_char();
+                let c: char = self.pop_t();
                 let pos = grid.cell_ahead_ip(self);
                 grid.set_char(pos, c);
                 self.walk(grid);
@@ -359,20 +291,16 @@ impl InstructionPointer {
                     return self.delta.invert();
                 }
                 let count = self.pop();
-                match count.signum() {
-                    1 => {
-                        for _ in 0..count {
-                            let elem = self.stacks[1].pop();
-                            self.push(elem);
-                        }
+                if count > 0 {
+                    for _ in 0..count {
+                        let elem = self.stacks[1].pop();
+                        self.push(elem);
                     }
-                    -1 => {
-                        for _ in 0..count.abs() {
-                            let elem = self.pop();
-                            self.stacks[1].push(elem);
-                        }
+                } else if count < 0 {
+                    for _ in 0..count.abs() {
+                        let elem = self.pop();
+                        self.stacks[1].push(elem);
                     }
-                    _ => {}
                 }
             }
             // Go South
@@ -387,7 +315,7 @@ impl InstructionPointer {
                 };
             }
             // Absolute Delta
-            'x' => self.delta = self.pop_vector(),
+            'x' => self.delta = self.pop_t(),
             // Get SysInfo
             'y' => {
                 let n = self.pop();
@@ -400,12 +328,17 @@ impl InstructionPointer {
                     Box::new(|_, ip| ip.push(0x52_46_4E_47)),
                     // 4: version number
                     Box::new(|_, ip| {
-                        ip.push(env!("CARGO_PKG_VERSION").replace(".", "").parse().unwrap())
+                        ip.push(
+                            env!("CARGO_PKG_VERSION")
+                                .replace(".", "")
+                                .parse::<i32>()
+                                .unwrap(),
+                        )
                     }),
                     // 5: how does "=" work
                     Box::new(|_, ip| ip.push(1)),
                     // 6: path separator
-                    Box::new(|_, ip| ip.push(std::path::MAIN_SEPARATOR as i32)),
+                    Box::new(|_, ip| ip.push(std::path::MAIN_SEPARATOR)),
                     // 7: dimension
                     Box::new(|_, ip| ip.push(2)),
                     // 8: pointer id
@@ -413,17 +346,15 @@ impl InstructionPointer {
                     // 9: team number
                     Box::new(|_, ip| ip.push(0)),
                     // 10: pos
-                    Box::new(|_, ip| ip.push_vector(ip.pos)),
+                    Box::new(|_, ip| ip.push(ip.pos)),
                     // 11: delta
-                    Box::new(|_, ip| ip.push_vector(ip.delta)),
+                    Box::new(|_, ip| ip.push(ip.delta)),
                     // 12: storage offset
-                    Box::new(|_, ip| ip.push_vector(ip.offset)),
+                    Box::new(|_, ip| ip.push(ip.offset)),
                     // 13: least point
-                    Box::new(|_, ip| ip.push_vector(vector::ORIGIN)),
+                    Box::new(|_, ip| ip.push(vector::ORIGIN)),
                     // 14: greatest point
-                    Box::new(|g, ip| {
-                        ip.push_vector(FungeVector(g.width() as i32, g.height() as i32 + 1))
-                    }),
+                    Box::new(|g, ip| ip.push(FungeVector(g.width() as i32, g.height() as i32 + 1))),
                     // 15: ((year - 1900) * 256 * 256) + (month * 256) + (day of month)
                     Box::new(|_, ip| {
                         let now = chrono::Utc::now();
@@ -457,11 +388,11 @@ impl InstructionPointer {
                     }),
                     // 19: program arguments as 0gnirts, with another nul at end
                     Box::new(|_, ip| {
-                        ip.push_0gnirts(args().collect::<Vec<String>>().join("\x00") + "\x00\x00")
+                        ip.push(args().collect::<Vec<String>>().join("\x00") + "\x00\x00")
                     }),
                     // 20: env vars as key=val 0nigrts, with another null at end
                     Box::new(|_, ip| {
-                        ip.push_0gnirts(
+                        ip.push(
                             vars()
                                 .map(|(k, v)| format!("{k}={v}"))
                                 .collect::<Vec<String>>()
@@ -517,19 +448,15 @@ impl InstructionPointer {
                 }
                 let n = self.pop();
                 (self.offset.1, self.offset.0) = (self.stacks[1].pop(), self.stacks[1].pop());
-                match n.signum() {
-                    1 => {
-                        let elems: Vec<i32> = (0..n).map(|_| self.pop()).collect();
-                        for val in elems.iter().rev() {
-                            self.stacks[1].push(*val)
-                        }
+                if n > 0 {
+                    let elems: Vec<i32> = (0..n).map(|_| self.pop()).collect();
+                    for val in elems.iter().rev() {
+                        self.stacks[1].push(*val)
                     }
-                    -1 => {
-                        for _ in 0..n.abs() {
-                            self.stacks[1].pop();
-                        }
+                } else if n < 0 {
+                    for _ in 0..n.abs() {
+                        self.stacks[1].pop();
                     }
-                    _ => {}
                 }
                 self.stacks.pop_front();
             }

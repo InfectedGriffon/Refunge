@@ -5,6 +5,7 @@ mod event;
 mod arguments;
 mod stack;
 mod pointer;
+mod stackable;
 
 use std::io;
 use clap::Parser;
