@@ -1,8 +1,9 @@
 use crate::arguments::Arguments;
 use crate::event::{Event, EventHandler, KeyHandler, TickHandler};
 use crate::grid::FungeGrid;
+use crate::key;
 use crate::pointer::InstructionPointer;
-use crate::{key, vector};
+use crate::vector::directions;
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use ratatui::layout::{Constraint, Direction::Horizontal, Layout};
 use ratatui::style::{Color, Style};
@@ -55,7 +56,7 @@ impl<'a> Befunge<'a> {
         let grid = FungeGrid::new(read_to_string(&args.file).expect("failed to read file"));
         let ip_list = [InstructionPointer::new(
             grid.start_pos(args.script),
-            vector::EAST,
+            directions::EAST,
             0,
         )]
         .into();
@@ -144,7 +145,7 @@ impl<'a> Befunge<'a> {
         self.grid.reset();
         self.ip_list = [InstructionPointer::new(
             self.grid.start_pos(self.args.script),
-            vector::EAST,
+            directions::EAST,
             0,
         )]
         .into();

@@ -37,16 +37,16 @@ impl FungeVector {
 impl Distribution<FungeVector> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> FungeVector {
         match rng.gen_range(0..=3) {
-            0 => NORTH,
-            1 => SOUTH,
-            2 => EAST,
-            _ => WEST,
+            0 => directions::NORTH,
+            1 => directions::SOUTH,
+            2 => directions::EAST,
+            _ => directions::WEST,
         }
     }
 }
 impl Default for FungeVector {
     fn default() -> Self {
-        ORIGIN
+        directions::ORIGIN
     }
 }
 impl Add<FungeVector> for FungeVector {
@@ -62,13 +62,16 @@ impl AddAssign for FungeVector {
     }
 }
 
-/// (0, 0)
-pub const ORIGIN: FungeVector = FungeVector(0, 0);
-/// (0, -1)
-pub const NORTH: FungeVector = FungeVector(0, -1);
-/// (0, 1)
-pub const SOUTH: FungeVector = FungeVector(0, 1);
-/// (1, 0)
-pub const EAST: FungeVector = FungeVector(1, 0);
-/// (-1, 0)
-pub const WEST: FungeVector = FungeVector(-1, 0);
+pub mod directions {
+    use super::FungeVector;
+    /// (0, 0)
+    pub const ORIGIN: FungeVector = FungeVector(0, 0);
+    /// (0, -1)
+    pub const NORTH: FungeVector = FungeVector(0, -1);
+    /// (0, 1)
+    pub const SOUTH: FungeVector = FungeVector(0, 1);
+    /// (1, 0)
+    pub const EAST: FungeVector = FungeVector(1, 0);
+    /// (-1, 0)
+    pub const WEST: FungeVector = FungeVector(-1, 0);
+}

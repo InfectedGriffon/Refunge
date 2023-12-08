@@ -3,8 +3,7 @@ use crate::event::Event;
 use crate::grid::FungeGrid;
 use crate::stack::FungeStack;
 use crate::stackable::Stackable;
-use crate::vector;
-use crate::vector::FungeVector;
+use crate::vector::{directions, FungeVector};
 use chrono::{Datelike, Timelike};
 use std::env::{args, vars};
 use std::fs::{read_to_string, File};
@@ -147,7 +146,7 @@ impl InstructionPointer {
                 self.command(grid.char_at(self.pos), grid, sender.clone(), out, quiet);
             }
             // Go West
-            '<' => self.delta = vector::WEST,
+            '<' => self.delta = directions::WEST,
             // Execute
             '=' => {
                 let cmd: String = self.pop_t();
@@ -161,7 +160,7 @@ impl InstructionPointer {
                 );
             }
             // Go East
-            '>' => self.delta = vector::EAST,
+            '>' => self.delta = directions::EAST,
             // Go Away
             '?' => self.delta = rand::random(),
             // Stop
@@ -174,13 +173,13 @@ impl InstructionPointer {
             // Turn Right
             ']' => self.delta.turn_right(),
             // Go North
-            '^' => self.delta = vector::NORTH,
+            '^' => self.delta = directions::NORTH,
             // East-West If
             '_' => {
                 if self.pop() == 0 {
-                    self.delta = vector::EAST
+                    self.delta = directions::EAST
                 } else {
-                    self.delta = vector::WEST
+                    self.delta = directions::WEST
                 }
             }
             // Greater Than
@@ -304,7 +303,7 @@ impl InstructionPointer {
                 }
             }
             // Go South
-            'v' => self.delta = vector::SOUTH,
+            'v' => self.delta = directions::SOUTH,
             // Compare
             'w' => {
                 let (b, a) = (self.pop(), self.pop());
@@ -352,7 +351,7 @@ impl InstructionPointer {
                     // 12: storage offset
                     Box::new(|_, ip| ip.push(ip.offset)),
                     // 13: least point
-                    Box::new(|_, ip| ip.push(vector::ORIGIN)),
+                    Box::new(|_, ip| ip.push(directions::ORIGIN)),
                     // 14: greatest point
                     Box::new(|g, ip| ip.push(FungeVector(g.width() as i32, g.height() as i32 + 1))),
                     // 15: ((year - 1900) * 256 * 256) + (month * 256) + (day of month)
@@ -436,9 +435,9 @@ impl InstructionPointer {
             // North-South If
             '|' => {
                 if self.pop() == 0 {
-                    self.delta = vector::SOUTH
+                    self.delta = directions::SOUTH
                 } else {
-                    self.delta = vector::NORTH
+                    self.delta = directions::NORTH
                 }
             }
             // End Block

@@ -36,4 +36,3 @@ While in the TUI, the following keyboard shortcuts are available:
 - add fingerprints (`()A-Z` commands)
 - bitflag properties
 - use spade for 2d environment instead of character vectors
-- move vector constants into sub module to make importing easier
