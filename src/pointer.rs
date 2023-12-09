@@ -5,6 +5,7 @@ use crate::stack::FungeStack;
 use crate::stackable::Stackable;
 use crate::vector::{directions, FungeVector};
 use chrono::{Datelike, Timelike};
+use std::collections::VecDeque;
 use std::env::{args, vars};
 use std::fs::{read_to_string, File};
 use std::io::Write;
@@ -25,9 +26,9 @@ pub struct InstructionPointer {
     pub pos: FungeVector,
     pub delta: FungeVector,
     pub offset: FungeVector,
-    pub string_mode: bool,
-    pub stacks: FungeStack<FungeStack<i32>>,
+    pub stacks: VecDeque<FungeStack>,
     pub id: usize,
+    pub string_mode: bool,
     pub dead: bool,
     pub first_tick: bool,
 }
@@ -88,6 +89,7 @@ impl InstructionPointer {
             }
             // Logical Not
             '!' => stack_op!(self; n; if n == 0 {1} else {0}),
+            // Enable String mode
             '"' => self.string_mode = true,
             // Trampoline
             '#' => self.walk(grid),
